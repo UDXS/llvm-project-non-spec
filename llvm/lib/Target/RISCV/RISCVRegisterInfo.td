@@ -23,6 +23,12 @@ class RISCVRegWithSubRegs<bits<5> Enc, string n, list<Register> subregs,
   let AltNames = alt;
 }
 
+class RISCVBReg<bits<5> Enc, string n, list<string> alt = []> : Register<n> {
+  let HWEncoding{4-0} = Enc;
+  let AltNames = alt;
+}
+
+
 class RISCVReg16<bits<5> Enc, string n, list<string> alt = []> : Register<n> {
   let HWEncoding{4-0} = Enc;
   let AltNames = alt;
@@ -112,6 +118,19 @@ let RegAltNameIndices = [ABIRegAltName] in {
   def X31 : RISCVReg<31,"x31", ["t6"]>, DwarfRegNum<[31]>;
   }
 }
+
+// Branch registers
+let RegAltNameIndices = [ABIRegAltName] in {
+  foreach Index = 0-31 in {
+    def B#Index : RISCVBReg<Index, "b"#Index, ["b"#Index]>, 
+    DwarfRegNum<[!add(Index, 192)]>;
+  }
+}
+
+def BPR : RegisterClass<"RISCV", [i256], 256, (add
+    (sequence "B%u", 0, 31)
+  )>;
+
 
 def XLenVT : ValueTypeByHwMode<[RV32, RV64],
                                [i32,  i64]>;

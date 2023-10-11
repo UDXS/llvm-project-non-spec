@@ -942,16 +942,32 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
     CurDAG->RemoveDeadNode(Node);
     return;
   }
+  /*case RISCVISD::BR_CC: {
+    auto CC = dyn_cast<CondCodeSDNode>(Node->getOperand(3))->get();
+    auto MBB = dyn_cast<BasicBlockSDNode>(Node->getOperand(4))->getBasicBlock();
+    //auto BB = MBB->getBasicBlock();
+    SDValue N1 = Node->getOperand(1);
+    SDValue N2 = Node->getOperand(2);
+    //auto condition = condcode->get();
+    if ((CC) == ISD::SETNE) {
+      std::cout << "YEEEEEEEEEEEEEEEEEEEEEEEET " << "\n";
+    }
+    SDNode *BMOVT = CurDAG->getMachineNode(RISCV::BMOVT, DL, VT, CurDAG->getBasicBlock(MBB));
+    SDNode *SLTIU = CurDAG->getMachineNode(RISCV::SLTIU, DL, VT, N1->getOperand(1), N2->getOperand(1));
+    SDNode *BMOVC = CurDAG->getMachineNode(RISCV::BMOVC, DL, VT, SDValue(SLTIU, 0), SDValue(BMOVT, 0));
+    ReplaceNode(Node, BMOVC);
+    break;
+  }*/
   case ISD::SHL: {
-    auto *N1C = dyn_cast<ConstantSDNode>(Node->getOperand(1));
+    auto *N1C = dyn_cast<ConstantSDNode>(Node->getOperand(1)); // Pick up the shl constant and cast into constant sd node found in SelectionDagNodes.h
     if (!N1C)
       break;
-    SDValue N0 = Node->getOperand(0);
+    SDValue N0 = Node->getOperand(0); // Pick up the and node
     if (N0.getOpcode() != ISD::AND || !N0.hasOneUse() ||
         !isa<ConstantSDNode>(N0.getOperand(1)))
       break;
-    unsigned ShAmt = N1C->getZExtValue();
-    uint64_t Mask = N0.getConstantOperandVal(1);
+    unsigned ShAmt = N1C->getZExtValue(); // Get Z extended value of SHL constant
+    uint64_t Mask = N0.getConstantOperandVal(1); // Get the and constant
 
     // Optimize (shl (and X, C2), C) -> (slli (srliw X, C3), C3+C) where C2 has
     // 32 leading zeros and C3 trailing zeros.

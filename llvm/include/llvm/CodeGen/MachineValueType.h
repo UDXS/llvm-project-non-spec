@@ -44,7 +44,7 @@ namespace llvm {
 #undef GET_VT_ATTR
 #undef GET_VT_RANGES
 
-      VALUETYPE_SIZE = LAST_VALUETYPE + 1,
+      VALUETYPE_SIZE = LAST_VALUETYPE + 2,
 
       // This is the current maximum for LAST_VALUETYPE.
       // MVT::MAX_ALLOWED_VALUETYPE is used for asserts and to size bit vectors

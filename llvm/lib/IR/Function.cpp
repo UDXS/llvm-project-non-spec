@@ -1113,6 +1113,9 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   case IIT_I128:
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 128));
     return;
+  case IIT_I256:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 256));
+    return;
   case IIT_V1:
     OutputTable.push_back(IITDescriptor::getVector(1, IsScalableVector));
     DecodeIITType(NextElt, Infos, Info, OutputTable);
