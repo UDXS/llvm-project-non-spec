@@ -34,6 +34,7 @@
 #include <cassert>
 #include <cstdint>
 #include <utility>
+#include <iostream>
 
 namespace llvm {
 

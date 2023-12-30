@@ -17,6 +17,7 @@
 #include "llvm/CodeGen/Register.h"
 #include "llvm/IR/Intrinsics.h"
 #include <cassert>
+#include <iostream>
 
 namespace llvm {
 
@@ -555,6 +556,7 @@ public:
 
   int64_t getImm() const {
     assert(isImm() && "Wrong MachineOperand accessor");
+    //std::cout << "yeet\n";
     return Contents.ImmVal;
   }
 

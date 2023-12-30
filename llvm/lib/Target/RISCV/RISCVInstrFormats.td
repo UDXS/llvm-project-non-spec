@@ -464,6 +464,19 @@ class RVInstU<RISCVOpcode opcode, dag outs, dag ins, string opcodestr,
   let Inst{6-0} = opcode.Value;
 }
 
+class RVInstUX<RISCVOpcode opcode, dag outs, dag ins, string opcodestr,
+              string argstr/*, list<dag> pattern*/>
+    : RVInst<outs, ins, opcodestr, argstr, [], InstFormatU> {
+  bits<20> imm20;
+  bits<5> rd;
+  //bits<5> rs1;
+
+  let Inst{31-12} = imm20;
+  let Inst{11-7} = rd;
+  //let Inst{11-7} = rs1;
+  let Inst{6-0} = opcode.Value;
+}
+
 class RVInstJ<RISCVOpcode opcode, dag outs, dag ins, string opcodestr,
               string argstr>
     : RVInst<outs, ins, opcodestr, argstr, [], InstFormatJ> {

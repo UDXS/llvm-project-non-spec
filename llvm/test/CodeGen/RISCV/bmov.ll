@@ -1,4 +1,4 @@
-; RUN: llc -mtriple=riscv32 -verify-machineinstrs < %s \
+ ; RUN: llc -mtriple=riscv32 -verify-machineinstrs < %s \
 ; RUN:   | FileCheck %s -check-prefix=RV64
 declare i32 @llvm.bmov.i32(i32)
 

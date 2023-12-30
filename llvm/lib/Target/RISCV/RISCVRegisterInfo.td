@@ -122,13 +122,35 @@ let RegAltNameIndices = [ABIRegAltName] in {
 // Branch registers
 let RegAltNameIndices = [ABIRegAltName] in {
   foreach Index = 0-31 in {
-    def B#Index : RISCVBReg<Index, "b"#Index, ["b"#Index]>, 
+    def BS#Index : RISCVBReg<Index, "bs"#Index, ["bs"#Index]>, 
     DwarfRegNum<[!add(Index, 192)]>;
   }
 }
 
-def BPR : RegisterClass<"RISCV", [i256], 256, (add
-    (sequence "B%u", 0, 31)
+def BPR_S : RegisterClass<"RISCV", [i64], 64, (add
+    (sequence "BS%u", 0, 31)
+  )>;
+
+let RegAltNameIndices = [ABIRegAltName] in {
+  foreach Index = 0-31 in {
+    def BT#Index : RISCVBReg<Index, "bt"#Index, ["bt"#Index]>, 
+    DwarfRegNum<[!add(Index, 224)]>;
+  }
+}
+
+def BPR_T : RegisterClass<"RISCV", [i64], 64, (add
+    (sequence "BT%u", 0, 31)
+  )>;
+
+let RegAltNameIndices = [ABIRegAltName] in {
+  foreach Index = 0-31 in {
+    def BC#Index : RISCVBReg<Index, "bc"#Index, ["bc"#Index]>, 
+    DwarfRegNum<[!add(Index, 256)]>;
+  }
+}
+
+def BPR_C : RegisterClass<"RISCV", [i64], 64, (add
+    (sequence "BC%u", 0, 31)
   )>;
 
 

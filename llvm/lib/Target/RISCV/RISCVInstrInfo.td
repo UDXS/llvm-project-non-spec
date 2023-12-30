@@ -45,6 +45,10 @@ def SDT_RISCVIntShiftDOpW : SDTypeProfile<1, 3, [
   SDTCisSameAs<0, 1>, SDTCisSameAs<0, 2>, SDTCisVT<0, i64>, SDTCisVT<3, i64>
 ]>;
 
+def SDT_RISCVBMOVT : SDTypeProfile<1, 2, [
+  SDTCisSameAs<0, 1>, SDTCisInt<2>, SDTCisVT<0, i256>
+]>;
+
 // Target-independent nodes, but with target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
                            [SDNPHasChain, SDNPOutGlue]>;
@@ -64,6 +68,10 @@ def riscv_mret_glue : SDNode<"RISCVISD::MRET_GLUE", SDTNone,
 def riscv_selectcc  : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC>;
 def riscv_brcc      : SDNode<"RISCVISD::BR_CC", SDT_RISCVBrCC,
                              [SDNPHasChain]>;
+
+def riscv_bmovt      : SDNode<"RISCVISD::BMOVT", SDT_RISCVBMOVT,
+                             [SDNPHasChain]>;
+
 def riscv_tail      : SDNode<"RISCVISD::TAIL", SDT_RISCVCall,
                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
                               SDNPVariadic]>;
@@ -686,6 +694,9 @@ def SW : Store_rri<0b010, "sw">, Sched<[WriteSTW, ReadStoreData, ReadMemBase]>;
 let isReMaterializable = 1, isAsCheapAsAMove = 1 in
 def ADDI  : ALU_ri<0b000, "addi">;
 
+
+
+
 let IsSignExtendingOpW = 1 in {
 def SLTI  : ALU_ri<0b010, "slti">;
 def SLTIU : ALU_ri<0b011, "sltiu">;
@@ -725,23 +736,44 @@ def OR   : ALU_rr<0b0000000, 0b110, "or", Commutable=1>,
 def AND  : ALU_rr<0b0000000, 0b111, "and", Commutable=1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
 
-let hasSideEffects = 0 , mayLoad = 0, mayStore = 0, Constraints = "$rs1 = $rd" in {
+let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
 def BMOVT
-			: RVInstBMOVST<0b001, OPC_CUSTOM_1, (outs BPR:$rd), (ins simm13_lsb0:$imm12, BPR:$rs1,  uimm5:$imm5),
-								"bmovt", "$rd, $imm12, $rs1, $imm5">;
+			: RVInstU<OPC_CUSTOM_1, (outs BPR_T:$rd), (ins uimm20:$imm20),
+								"bmovt", "$rd, $imm20">;
 }
 
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Constraints = "$rs1 = $rd" in {
+let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
+def BMOVS
+			: RVInstU<OPC_CUSTOM_2, (outs BPR_S:$rd), (ins uimm20:$imm20),
+								"bmovs", "$rd, $imm20">;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+def BMOVC
+			: RVInstR<0b1111111, 0b010, OPC_CUSTOM_3, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rs1, $rs2">;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Constraints = "$rs3 = $rd"  in {
+def PB
+			: RVInstR<0b1111111, 0b011, OPC_CUSTOM_3, (outs BPR_T:$rd), (ins BPR_C:$rs1, BPR_S:$rs2, BPR_T:$rs3),
+								"pb", "$rd, $rs1, $rs2">;
+}
+
+/*let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
+def BMOVC
+			: RVInstU<OPC_CUSTOM_2, (outs BPR_C:$rd), (ins uimm20:$imm20),
+								"bmovc", "$rd, $rs">;
+}*/
+
+
+/*let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Constraints = "$rs1 = $rd" in {
 def BMOVS
 			: RVInstBMOVST<0b000, OPC_CUSTOM_1, (outs BPR:$rd), (ins simm13_lsb0:$imm12, BPR:$rs1, uimm5:$imm5),
 								"bmovs", "$rd, $imm12, $rs1, $imm5">;
 
 }
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Constraints = "$rs1 = $rd" in {
-def BMOVC
-			: RVInstR<0b1111111, 0b010, OPC_CUSTOM_1, (outs BPR:$rd), (ins BPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rs1, $rs2">;
-}        
+*/        
 
 let hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
 def FENCE : RVInstI<0b000, OPC_MISC_MEM, (outs),

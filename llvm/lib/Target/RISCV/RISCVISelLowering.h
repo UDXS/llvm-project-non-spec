@@ -40,6 +40,7 @@ enum NodeType : unsigned {
   /// integer or floating point.
   SELECT_CC,
   BR_CC,
+  //BMOVT,
   BuildPairF64,
   SplitF64,
   TAIL,

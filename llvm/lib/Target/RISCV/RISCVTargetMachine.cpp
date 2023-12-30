@@ -35,6 +35,7 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/IPO.h"
 #include <optional>
+#include <iostream>
 using namespace llvm;
 
 static cl::opt<bool> EnableRedundantCopyElimination(
@@ -243,7 +244,10 @@ namespace {
 class RISCVPassConfig : public TargetPassConfig {
 public:
   RISCVPassConfig(RISCVTargetMachine &TM, PassManagerBase &PM)
-      : TargetPassConfig(TM, PM) {}
+      : TargetPassConfig(TM, PM) {
+    if (TM.getOptLevel() != CodeGenOptLevel::None)
+      substitutePass(&PostRASchedulerID, &PostMachineSchedulerID);
+      }
 
   RISCVTargetMachine &getRISCVTargetMachine() const {
     return getTM<RISCVTargetMachine>();
@@ -252,22 +256,23 @@ public:
   ScheduleDAGInstrs *
   createMachineScheduler(MachineSchedContext *C) const override {
     const RISCVSubtarget &ST = C->MF->getSubtarget<RISCVSubtarget>();
-    if (ST.hasMacroFusion()) {
+    //if (ST.hasMacroFusion()) {
       ScheduleDAGMILive *DAG = createGenericSchedLive(C);
       DAG->addMutation(createRISCVMacroFusionDAGMutation());
       return DAG;
-    }
+    //}
     return nullptr;
   }
 
   ScheduleDAGInstrs *
   createPostMachineScheduler(MachineSchedContext *C) const override {
     const RISCVSubtarget &ST = C->MF->getSubtarget<RISCVSubtarget>();
-    if (ST.hasMacroFusion()) {
+    //if (ST.hasMacroFusion()) {
       ScheduleDAGMI *DAG = createGenericSchedPostRA(C);
       DAG->addMutation(createRISCVMacroFusionDAGMutation());
+      std::cout << "Running post-RA scheduler\n";
       return DAG;
-    }
+    //}
     return nullptr;
   }
 
@@ -365,13 +370,14 @@ bool RISCVPassConfig::addGlobalInstructionSelect() {
 
 void RISCVPassConfig::addPreSched2() {
   // Emit KCFI checks for indirect calls.
+  //addPass(createRISCVMachineInstrPrinterPass());
   addPass(createKCFIPass());
 }
 
 void RISCVPassConfig::addPreEmitPass() {
   addPass(&BranchRelaxationPassID);
   addPass(createRISCVMakeCompressibleOptPass());
-
+  //addPass(createRISCVMachineInstrPrinterPass());
   // TODO: It would potentially be better to schedule copy propagation after
   // expanding pseudos (in addPreEmitPass2). However, performing copy
   // propagation after the machine outliner (which runs after addPreEmitPass)
