@@ -74,6 +74,10 @@ def : WriteRes<WriteLDW, [SCR1_LSU]>;
 def : WriteRes<WriteLDD, [SCR1_LSU]>;
 }
 
+let Latency = 25 in {
+  def : WriteRes<WriteBMOV, [RocketUnitALU]>;
+}
+
 let Unsupported = true in {
 // Atomic memory
 def : WriteRes<WriteAtomicW, [SCR1_LSU]>;

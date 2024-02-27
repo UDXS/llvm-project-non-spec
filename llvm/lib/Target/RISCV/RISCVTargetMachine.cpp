@@ -256,23 +256,22 @@ public:
   ScheduleDAGInstrs *
   createMachineScheduler(MachineSchedContext *C) const override {
     const RISCVSubtarget &ST = C->MF->getSubtarget<RISCVSubtarget>();
-    //if (ST.hasMacroFusion()) {
+    if (ST.hasMacroFusion()) {
       ScheduleDAGMILive *DAG = createGenericSchedLive(C);
       DAG->addMutation(createRISCVMacroFusionDAGMutation());
       return DAG;
-    //}
+    }
     return nullptr;
   }
 
   ScheduleDAGInstrs *
   createPostMachineScheduler(MachineSchedContext *C) const override {
     const RISCVSubtarget &ST = C->MF->getSubtarget<RISCVSubtarget>();
-    //if (ST.hasMacroFusion()) {
+    if (ST.hasMacroFusion()) {
       ScheduleDAGMI *DAG = createGenericSchedPostRA(C);
       DAG->addMutation(createRISCVMacroFusionDAGMutation());
-      std::cout << "Running post-RA scheduler\n";
       return DAG;
-    //}
+    }
     return nullptr;
   }
 
@@ -419,7 +418,7 @@ void RISCVPassConfig::addMachineSSAOptimization() {
 }
 
 void RISCVPassConfig::addPreRegAlloc() {
-  addPass(createRISCVMachineInstrPrinterPass());
+  //addPass(createRISCVMachineInstrPrinterPass());
   addPass(createRISCVPreRAExpandPseudoPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None)
     addPass(createRISCVMergeBaseOffsetOptPass());

@@ -51,6 +51,7 @@ def WriteFDiv64     : SchedWrite;    // 64-bit floating point divide
 def WriteFSqrt16    : SchedWrite;    // 16-bit floating point sqrt
 def WriteFSqrt32    : SchedWrite;    // 32-bit floating point sqrt
 def WriteFSqrt64    : SchedWrite;    // 64-bit floating point sqrt
+def WriteBMOV       : SchedWrite;
 
 // Integer to float conversions
 def WriteFCvtI32ToF16  : SchedWrite;

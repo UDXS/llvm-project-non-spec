@@ -324,6 +324,10 @@ def : WriteRes<WriteFLD32, [SiFive7PipeA]>;
 def : WriteRes<WriteFLD64, [SiFive7PipeA]>;
 }
 
+let Latency = 25 in {
+  def : WriteRes<WriteBMOV, [RocketUnitALU]>;
+}
+
 // Atomic memory
 def : WriteRes<WriteAtomicSTW, [SiFive7PipeA]>;
 def : WriteRes<WriteAtomicSTD, [SiFive7PipeA]>;

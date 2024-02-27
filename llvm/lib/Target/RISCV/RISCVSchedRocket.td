@@ -66,6 +66,10 @@ def : WriteRes<WriteIMul, [RocketUnitIMul]>;
 def : WriteRes<WriteIMul32, [RocketUnitIMul]>;
 }
 
+let Latency = 25 in {
+  def : WriteRes<WriteBMOV, [RocketUnitALU]>;
+}
+
 // Integer division
 // Worst case latency is used.
 def : WriteRes<WriteIDiv32, [RocketUnitIDiv]> {

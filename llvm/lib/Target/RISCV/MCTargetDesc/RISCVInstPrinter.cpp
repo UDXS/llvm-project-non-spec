@@ -23,6 +23,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
+#include <iostream>
 using namespace llvm;
 
 #define DEBUG_TYPE "asm-printer"
@@ -86,6 +87,7 @@ void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &MO = MI->getOperand(OpNo);
 
   if (MO.isReg()) {
+    //std::cout << "Trying to print for " << MI->getOpcode() << std::endl;
     printRegName(O, MO.getReg());
     return;
   }

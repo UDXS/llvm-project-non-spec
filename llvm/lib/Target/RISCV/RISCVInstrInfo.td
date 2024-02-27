@@ -739,25 +739,29 @@ def AND  : ALU_rr<0b0000000, 0b111, "and", Commutable=1>,
 let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
 def BMOVT
 			: RVInstU<OPC_CUSTOM_1, (outs BPR_T:$rd), (ins uimm20:$imm20),
-								"bmovt", "$rd, $imm20">;
+								"bmovt", "$rd, $imm20">, Sched<[WriteBMOV]>;
 }
 
 let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
 def BMOVS
 			: RVInstU<OPC_CUSTOM_2, (outs BPR_S:$rd), (ins uimm20:$imm20),
-								"bmovs", "$rd, $imm20">;
+								"bmovs", "$rd, $imm20">, Sched<[WriteBMOV]>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVC
-			: RVInstR<0b1111111, 0b010, OPC_CUSTOM_3, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rs1, $rs2">;
+			: RVInstI<0b010, OPC_CUSTOM_3, (outs BPR_C:$rd), (ins GPR:$rs1, simm12:$imm12),
+								"bmovc", "$rd, $rs1, $imm12">;
 }
 
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Constraints = "$rs3 = $rd"  in {
+
+//class PB_nodestr<bits<7> funct7, bits<3> opcode, string opcodestr>
+//  : RVInstR<funct7
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch=1, isTerminator=1, isBMOV=1  in {
 def PB
-			: RVInstR<0b1111111, 0b011, OPC_CUSTOM_3, (outs BPR_T:$rd), (ins BPR_C:$rs1, BPR_S:$rs2, BPR_T:$rs3),
-								"pb", "$rd, $rs1, $rs2">;
+			: RVInstR<0b1111111, 0b011, OPC_CUSTOM_3, (outs), (ins BPR_C:$rs1, BPR_S:$rs2, BPR_T:$rd),
+								"pb", "s:$rs2, t:$rd, c:$rs1">;               
 }
 
 /*let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {

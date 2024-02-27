@@ -31,6 +31,7 @@
 #include "llvm/MC/MCInstBuilder.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <iostream>
 
 using namespace llvm;
 
@@ -813,6 +814,34 @@ static void parseCondBranch(MachineInstr &LastInst, MachineBasicBlock *&Target,
   Cond.push_back(LastInst.getOperand(1));
 }
 
+static RISCVCC::CondCode getCondFromBMOVC(uint64_t cc) {
+  switch (cc) {
+  default:
+    return RISCVCC::COND_INVALID;
+    case 1:
+      return RISCVCC::COND_EQ;
+    case 0:
+      return RISCVCC::COND_NE;
+    case 2:
+      return RISCVCC::COND_LT;
+  }
+}
+static void parseBMOV(MachineBasicBlock &MBB, MachineBasicBlock *&Target, SmallVectorImpl<MachineOperand> &Cond) {
+
+  for (auto &MI : MBB) {
+    if (MI.getDesc().getOpcode() == RISCV::BMOVT) {
+      Target = MI.getOperand(1).getMBB();
+    }
+    else if (MI.getDesc().getOpcode() == RISCV::BMOVC) {
+      unsigned CC = getCondFromBMOVC(MI.getOperand(2).getImm());
+      Cond.push_back(MachineOperand::CreateImm(CC));
+      Cond.push_back(MI.getOperand(1));
+    }
+  }
+}
+
+
+
 const MCInstrDesc &RISCVInstrInfo::getBrCond(RISCVCC::CondCode CC) const {
   switch (CC) {
   default:
@@ -858,9 +887,9 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
                                    bool AllowModify) const {
   TBB = FBB = nullptr;
   Cond.clear();
-
   // If the block has no terminators, it just falls into the block after it.
   MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
+  //std::cout <<"In analyze branch where the second last instr is "<< std::prev(I)->getDesc().getOpcode()<< " and last instr is " << I->getDesc().getOpcode() << std::endl;
   if (I == MBB.end() || !isUnpredicatedTerminator(*I))
     return false;
 
@@ -871,12 +900,13 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   for (auto J = I.getReverse(); J != MBB.rend() && isUnpredicatedTerminator(*J);
        J++) {
     NumTerminators++;
+    //std::cout << "Terminator opcode" << J->getDesc().getOpcode() << std::endl;
     if (J->getDesc().isUnconditionalBranch() ||
         J->getDesc().isIndirectBranch()) {
       FirstUncondOrIndirectBr = J.getReverse();
     }
   }
-
+  //std::cout << "Terminators = " << NumTerminators << std::endl;
   // If AllowModify is true, we can erase any terminators after
   // FirstUncondOrIndirectBR.
   if (AllowModify && FirstUncondOrIndirectBr != MBB.end()) {
@@ -899,6 +929,19 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   if (NumTerminators > 2)
     return true;
 
+  if (NumTerminators == 1 && I->getDesc().getOpcode() == RISCV::PB) {
+      parseBMOV(MBB, TBB, Cond);
+      //FBB = getBranchDestBlock(*I);
+      return false;
+  }
+
+  if ((NumTerminators == 2 && std::prev(I)->getDesc().getOpcode() == RISCV::PB &&
+    I->getDesc().isUnconditionalBranch())) {
+      parseBMOV(MBB, TBB, Cond);
+      FBB = getBranchDestBlock(*I);
+      return false;
+  }
+
   // Handle a single unconditional branch.
   if (NumTerminators == 1 && I->getDesc().isUnconditionalBranch()) {
     TBB = getBranchDestBlock(*I);
@@ -911,9 +954,11 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     return false;
   }
 
+
+
   // Handle a conditional branch followed by an unconditional branch.
   if (NumTerminators == 2 && std::prev(I)->getDesc().isConditionalBranch() &&
-      I->getDesc().isUnconditionalBranch()) {
+      I->getDesc().isUnconditionalBranch()) { 
     parseCondBranch(*std::prev(I), TBB, Cond);
     FBB = getBranchDestBlock(*I);
     return false;
@@ -931,8 +976,8 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (I == MBB.end())
     return 0;
 
-  if (!I->getDesc().isUnconditionalBranch() &&
-      !I->getDesc().isConditionalBranch())
+  if ((!I->getDesc().isUnconditionalBranch() &&
+      !I->getDesc().isConditionalBranch()) || (I->getDesc().getOpcode() == RISCV::PB))
     return 0;
 
   // Remove the branch.
@@ -945,8 +990,9 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (I == MBB.begin())
     return 1;
   --I;
-  if (!I->getDesc().isConditionalBranch())
+  if (!I->getDesc().isConditionalBranch() || I->getDesc().getOpcode() == RISCV::PB)
     return 1;
+
 
   // Remove the branch.
   if (BytesRemoved)
@@ -955,6 +1001,14 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   return 2;
 }
 
+static bool containsPB(MachineBasicBlock &MBB) {
+  for (auto &MI : MBB) {
+    if(MI.getDesc().getOpcode() == RISCV::PB) {
+      return true;
+    }
+  }
+  return false;
+}
 // Inserts a branch into the end of the specific MachineBasicBlock, returning
 // the number of instructions inserted.
 unsigned RISCVInstrInfo::insertBranch(
@@ -963,6 +1017,9 @@ unsigned RISCVInstrInfo::insertBranch(
   if (BytesAdded)
     *BytesAdded = 0;
 
+  if(containsPB(MBB)) {
+    return 0;
+  }
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
   assert((Cond.size() == 3 || Cond.size() == 0) &&
@@ -1457,19 +1514,17 @@ static bool isFMUL(unsigned Opc) {
 
 bool RISCVInstrInfo::hasReassociableSibling(const MachineInstr &Inst,
                                             bool &Commuted) const {
+                                  
   if (!TargetInstrInfo::hasReassociableSibling(Inst, Commuted))
     return false;
-
   const MachineRegisterInfo &MRI = Inst.getMF()->getRegInfo();
   unsigned OperandIdx = Commuted ? 2 : 1;
   const MachineInstr &Sibling =
       *MRI.getVRegDef(Inst.getOperand(OperandIdx).getReg());
-
   int16_t InstFrmOpIdx =
       RISCV::getNamedOperandIdx(Inst.getOpcode(), RISCV::OpName::frm);
   int16_t SiblingFrmOpIdx =
       RISCV::getNamedOperandIdx(Sibling.getOpcode(), RISCV::OpName::frm);
-
   return (InstFrmOpIdx < 0 && SiblingFrmOpIdx < 0) ||
          RISCV::hasEqualFRM(Inst, Sibling);
 }

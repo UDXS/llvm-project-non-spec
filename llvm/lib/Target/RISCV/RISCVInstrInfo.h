@@ -54,6 +54,7 @@ public:
   MCInst getNop() const override;
   const MCInstrDesc &getBrCond(RISCVCC::CondCode CC) const;
 
+
   unsigned isLoadFromStackSlot(const MachineInstr &MI,
                                int &FrameIndex) const override;
   unsigned isLoadFromStackSlot(const MachineInstr &MI, int &FrameIndex,

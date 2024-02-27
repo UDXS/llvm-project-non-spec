@@ -1,0 +1,225 @@
+# Machine code for function compareValues: IsSSA, NoPHIs, TracksLiveness, NoVRegs, TracksDebugUserValues
+Frame Objects:
+  fi#0: size=4, align=4, at location [SP]
+  fi#1: size=4, align=4, at location [SP]
+  fi#2: size=4, align=4, at location [SP]
+  fi#3: size=4, align=4, at location [SP]
+  fi#4: size=4, align=4, at location [SP]
+Function Live Ins: $x10, $x11
+
+bb.0 (%ir-block.2):
+  successors: %bb.1(0x40000000), %bb.6(0x40000000); %bb.1(50.00%), %bb.6(50.00%)
+  liveins: $x10, $x11
+  SW killed renamable $x10, %stack.0, 0 :: (store (s32) into %ir.3)
+  SW killed renamable $x11, %stack.1, 0 :: (store (s32) into %ir.4)
+  SW $x0, %stack.2, 0 :: (store (s32) into %ir.5)
+  renamable $x10 = LW %stack.0, 0 :: (dereferenceable load (s32) from %ir.3)
+  renamable $x11 = LW %stack.1, 0 :: (dereferenceable load (s32) from %ir.4)
+  renamable $bt0 = BMOVT %bb.6
+  renamable $bs0 = BMOVS %bb.6
+  renamable $x10 = SUB killed renamable $x10, killed renamable $x11
+  renamable $x10 = SLTIU killed renamable $x10, 1
+  renamable $bc0 = BMOVC killed renamable $x10, $x0
+  dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+  PseudoBR %bb.1
+
+bb.1 (%ir-block.11):
+; predecessors: %bb.0
+  successors: %bb.2(0x80000000); %bb.2(100.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  $x10 = COPY $x0
+  PseudoCALL target-flags(riscv-call) @time, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit $x10, implicit-def $x2, implicit-def $x10
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  renamable $x10 = ADDIW killed renamable $x10, 0
+  PseudoCALL target-flags(riscv-call) @srand, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit $x10, implicit-def $x2
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  SW $x0, %stack.3, 0 :: (store (s32) into %ir.6)
+  PseudoBR %bb.2
+
+bb.2 (%ir-block.14):
+; predecessors: %bb.1, %bb.4
+  successors: %bb.3(0x40000000), %bb.5(0x40000000); %bb.3(50.00%), %bb.5(50.00%)
+
+  renamable $x10 = LW %stack.3, 0 :: (dereferenceable load (s32) from %ir.6)
+  renamable $x11 = LUI 2
+  renamable $x11 = ADDIW killed renamable $x11, 1807
+  renamable $bt0 = BMOVT %bb.5
+  renamable $bs0 = BMOVS %bb.5
+  renamable $x11 = SUB killed renamable $x11, killed renamable $x10
+  renamable $x10 = SLTI killed renamable $x11, 0
+  renamable $bc0 = BMOVC killed renamable $x10, $x0
+  dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+  PseudoBR %bb.3
+
+bb.3 (%ir-block.17):
+; predecessors: %bb.2
+  successors: %bb.4(0x80000000); %bb.4(100.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  PseudoCALL target-flags(riscv-call) @rand, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit-def $x2, implicit-def $x10
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+  renamable $x10 = ADDW killed renamable $x11, killed renamable $x10
+  SW killed renamable $x10, %stack.2, 0 :: (store (s32) into %ir.5)
+  PseudoBR %bb.4
+
+bb.4 (%ir-block.21):
+; predecessors: %bb.3
+  successors: %bb.2(0x80000000); %bb.2(100.00%)
+
+  renamable $x10 = LW %stack.3, 0 :: (dereferenceable load (s32) from %ir.6)
+  renamable $x10 = ADDIW killed renamable $x10, 1
+  SW killed renamable $x10, %stack.3, 0 :: (store (s32) into %ir.6)
+  PseudoBR %bb.2
+
+bb.5 (%ir-block.24):
+; predecessors: %bb.2
+  successors: %bb.11(0x80000000); %bb.11(100.00%)
+
+  renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  renamable $x10 = LUI target-flags(riscv-hi) @.str
+  renamable $x10 = ADDI killed renamable $x10, target-flags(riscv-lo) @.str
+  PseudoCALL target-flags(riscv-call) @printf, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit $x10, implicit $x11, implicit-def $x2, implicit-def $x10
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  PseudoBR %bb.11
+
+bb.6 (%ir-block.27):
+; predecessors: %bb.0
+  successors: %bb.7(0x80000000); %bb.7(100.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  $x10 = COPY $x0
+  PseudoCALL target-flags(riscv-call) @time, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit $x10, implicit-def $x2, implicit-def $x10
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  renamable $x10 = ADDIW killed renamable $x10, 0
+  PseudoCALL target-flags(riscv-call) @srand, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit $x10, implicit-def $x2
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  SW $x0, %stack.4, 0 :: (store (s32) into %ir.7)
+  PseudoBR %bb.7
+
+bb.7 (%ir-block.30):
+; predecessors: %bb.6, %bb.9
+  successors: %bb.8(0x40000000), %bb.10(0x40000000); %bb.8(50.00%), %bb.10(50.00%)
+
+  renamable $x10 = LW %stack.4, 0 :: (dereferenceable load (s32) from %ir.7)
+  renamable $x11 = LUI 1
+  renamable $x11 = ADDIW killed renamable $x11, 903
+  renamable $bt0 = BMOVT %bb.10
+  renamable $bs0 = BMOVS %bb.10
+  renamable $x11 = SUB killed renamable $x11, killed renamable $x10
+  renamable $x10 = SLTI killed renamable $x11, 0
+  renamable $bc0 = BMOVC killed renamable $x10, $x0
+  dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+  PseudoBR %bb.8
+
+bb.8 (%ir-block.33):
+; predecessors: %bb.7
+  successors: %bb.9(0x80000000); %bb.9(100.00%)
+
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  PseudoCALL target-flags(riscv-call) @rand, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit-def $x2, implicit-def $x10
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+  renamable $x11 = SUBW killed renamable $x11, killed renamable $x10
+  SW killed renamable $x11, %stack.2, 0 :: (store (s32) into %ir.5)
+  PseudoBR %bb.9
+
+bb.9 (%ir-block.37):
+; predecessors: %bb.8
+  successors: %bb.7(0x80000000); %bb.7(100.00%)
+
+  renamable $x10 = LW %stack.4, 0 :: (dereferenceable load (s32) from %ir.7)
+  renamable $x10 = ADDIW killed renamable $x10, 1
+  SW killed renamable $x10, %stack.4, 0 :: (store (s32) into %ir.7)
+  PseudoBR %bb.7
+
+bb.10 (%ir-block.40):
+; predecessors: %bb.7
+  successors: %bb.11(0x80000000); %bb.11(100.00%)
+
+  renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+  ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+  renamable $x10 = LUI target-flags(riscv-hi) @.str.1
+  renamable $x10 = ADDI killed renamable $x10, target-flags(riscv-lo) @.str.1
+  PseudoCALL target-flags(riscv-call) @printf, <regmask $vlenb $x0 $x1 $x3 $x4 $x8 $x9 $x18 $x19 $x20 $x21 $x22 $x23 $x24 $x25 $x26 $x27 $x8_pd $x18_pd $x20_pd $x22_pd $x24_pd $x26_pd>, implicit-def dead $x1, implicit $x10, implicit $x11, implicit-def $x2, implicit-def $x10
+  ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+  PseudoBR %bb.11
+
+bb.11 (%ir-block.43):
+; predecessors: %bb.5, %bb.10
+
+  PseudoRET
+
+# End machine code for function compareValues.
+
+*** Bad machine code: MBB has unexpected successors which are not branch targets, fallthrough, EHPads, or inlineasm_br targets. ***
+- function:    compareValues
+- basic block: %bb.0  (0x56492fa77960)
+
+*** Bad machine code: Explicit operand marked as implicit ***
+- function:    compareValues
+- basic block: %bb.0  (0x56492fa77960)
+- instruction: dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+- operand 3:   implicit killed renamable $bt0
+
+*** Bad machine code: Operand should be tied ***
+- function:    compareValues
+- basic block: %bb.0  (0x56492fa77960)
+- instruction: dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+- operand 3:   implicit killed renamable $bt0
+
+*** Bad machine code: MBB has unexpected successors which are not branch targets, fallthrough, EHPads, or inlineasm_br targets. ***
+- function:    compareValues
+- basic block: %bb.2  (0x56492fa77b60)
+
+*** Bad machine code: Explicit operand marked as implicit ***
+- function:    compareValues
+- basic block: %bb.2  (0x56492fa77b60)
+- instruction: dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+- operand 3:   implicit killed renamable $bt0
+
+*** Bad machine code: Operand should be tied ***
+- function:    compareValues
+- basic block: %bb.2  (0x56492fa77b60)
+- instruction: dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+- operand 3:   implicit killed renamable $bt0
+
+*** Bad machine code: MBB has unexpected successors which are not branch targets, fallthrough, EHPads, or inlineasm_br targets. ***
+- function:    compareValues
+- basic block: %bb.7  (0x56492fa78060)
+
+*** Bad machine code: Explicit operand marked as implicit ***
+- function:    compareValues
+- basic block: %bb.7  (0x56492fa78060)
+- instruction: dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+- operand 3:   implicit killed renamable $bt0
+
+*** Bad machine code: Operand should be tied ***
+- function:    compareValues
+- basic block: %bb.7  (0x56492fa78060)
+- instruction: dead renamable $bt0 = PB killed renamable $bc0, killed renamable $bs0, implicit killed renamable $bt0
+- operand 3:   implicit killed renamable $bt0
+LLVM ERROR: Found 9 machine code errors.
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace.
+Stack dump:
+0.      Program arguments: ../../../../build/bin/llc test.mir -mtriple=riscv64 -run-pass=postrapseudos -o output.txt
+ #0 0x00007f3b855b0a20 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/home/ubuntu/riscv/riscv-llvm/build/bin/../lib/libLLVMSupport.so.18git+0x1cea20)
+ #1 0x00007f3b855adfee SignalHandler(int) Signals.cpp:0:0
+ #2 0x00007f3b84fc5520 (/lib/x86_64-linux-gnu/libc.so.6+0x42520)
+ #3 0x00007f3b850199fc pthread_kill (/lib/x86_64-linux-gnu/libc.so.6+0x969fc)
+ #4 0x00007f3b84fc5476 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x42476)
+ #5 0x00007f3b84fab7f3 abort (/lib/x86_64-linux-gnu/libc.so.6+0x287f3)
+ #6 0x00007f3b85435d40 llvm::GlobPattern::create(llvm::StringRef, std::optional<unsigned long>) (.cold) GlobPattern.cpp:0:0
+ #7 0x00007f3b86c0cc58 llvm::MachineFunction::verify(llvm::Pass*, char const*, bool) const (/home/ubuntu/riscv/riscv-llvm/build/bin/../lib/libLLVMCodeGen.so.18git+0x442c58)
+ #8 0x00007f3b87539d69 llvm::MIRParserImpl::initializeMachineFunction(llvm::yaml::MachineFunction const&, llvm::MachineFunction&) (/home/ubuntu/riscv/riscv-llvm/build/bin/../lib/libLLVMMIRParser.so.18git+0x33d69)
+ #9 0x00007f3b87541652 llvm::MIRParserImpl::parseMachineFunction(llvm::Module&, llvm::MachineModuleInfo&) (/home/ubuntu/riscv/riscv-llvm/build/bin/../lib/libLLVMMIRParser.so.18git+0x3b652)
+#10 0x00007f3b875416b2 llvm::MIRParser::parseMachineFunctions(llvm::Module&, llvm::MachineModuleInfo&) (/home/ubuntu/riscv/riscv-llvm/build/bin/../lib/libLLVMMIRParser.so.18git+0x3b6b2)
+#11 0x000056492ed50fcd main (../../../../build/bin/llc+0xdfcd)
+#12 0x00007f3b84facd90 (/lib/x86_64-linux-gnu/libc.so.6+0x29d90)
+#13 0x00007f3b84face40 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x29e40)
+#14 0x000056492ed51765 _start (../../../../build/bin/llc+0xe765)
+Aborted (core dumped)

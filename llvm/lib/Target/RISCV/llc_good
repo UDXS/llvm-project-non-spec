@@ -1,0 +1,418 @@
+--- |
+  ; ModuleID = 'test.mir'
+  source_filename = "call.c"
+  target datalayout = "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128"
+  target triple = "riscv64-unknown-unknown"
+
+  @.str = private unnamed_addr constant [34 x i8] c"Values are not equal. Result: %d\0A\00", align 1
+  @.str.1 = private unnamed_addr constant [30 x i8] c"Values are equal. Result: %d\0A\00", align 1
+
+  ; Function Attrs: noinline nounwind optnone
+  define dso_local void @compareValues(i32 noundef signext %0, i32 noundef signext %1) #0 {
+    %3 = alloca i32, align 4
+    %4 = alloca i32, align 4
+    %5 = alloca i32, align 4
+    %6 = alloca i32, align 4
+    %7 = alloca i32, align 4
+    store i32 %0, ptr %3, align 4
+    store i32 %1, ptr %4, align 4
+    store i32 0, ptr %5, align 4
+    %8 = load i32, ptr %3, align 4
+    %9 = load i32, ptr %4, align 4
+    %10 = icmp ne i32 %8, %9
+    br i1 %10, label %11, label %27
+
+  11:                                               ; preds = %2
+    %12 = call i64 @time(ptr noundef null)
+    %13 = trunc i64 %12 to i32
+    call void @srand(i32 noundef signext %13)
+    store i32 0, ptr %6, align 4
+    br label %14
+
+  14:                                               ; preds = %21, %11
+    %15 = load i32, ptr %6, align 4
+    %16 = icmp slt i32 %15, 10000
+    br i1 %16, label %17, label %24
+
+  17:                                               ; preds = %14
+    %18 = call signext i32 @rand()
+    %19 = load i32, ptr %5, align 4
+    %20 = add nsw i32 %19, %18
+    store i32 %20, ptr %5, align 4
+    br label %21
+
+  21:                                               ; preds = %17
+    %22 = load i32, ptr %6, align 4
+    %23 = add nsw i32 %22, 1
+    store i32 %23, ptr %6, align 4
+    br label %14, !llvm.loop !5
+
+  24:                                               ; preds = %14
+    %25 = load i32, ptr %5, align 4
+    %26 = call signext i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef signext %25)
+    br label %43
+
+  27:                                               ; preds = %2
+    %28 = call i64 @time(ptr noundef null)
+    %29 = trunc i64 %28 to i32
+    call void @srand(i32 noundef signext %29)
+    store i32 0, ptr %7, align 4
+    br label %30
+
+  30:                                               ; preds = %37, %27
+    %31 = load i32, ptr %7, align 4
+    %32 = icmp slt i32 %31, 5000
+    br i1 %32, label %33, label %40
+
+  33:                                               ; preds = %30
+    %34 = call signext i32 @rand()
+    %35 = load i32, ptr %5, align 4
+    %36 = sub nsw i32 %35, %34
+    store i32 %36, ptr %5, align 4
+    br label %37
+
+  37:                                               ; preds = %33
+    %38 = load i32, ptr %7, align 4
+    %39 = add nsw i32 %38, 1
+    store i32 %39, ptr %7, align 4
+    br label %30, !llvm.loop !7
+
+  40:                                               ; preds = %30
+    %41 = load i32, ptr %5, align 4
+    %42 = call signext i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef signext %41)
+    br label %43
+
+  43:                                               ; preds = %40, %24
+    ret void
+  }
+
+  declare dso_local void @srand(i32 noundef signext) #1
+
+  declare dso_local i64 @time(ptr noundef) #1
+
+  declare dso_local signext i32 @rand() #1
+
+  declare dso_local signext i32 @printf(ptr noundef, ...) #1
+
+  ; Function Attrs: noinline nounwind optnone
+  define dso_local signext i32 @main() #0 {
+    %1 = alloca i32, align 4
+    %2 = alloca i32, align 4
+    %3 = alloca i32, align 4
+    store i32 0, ptr %1, align 4
+    %4 = call i64 @time(ptr noundef null)
+    %5 = trunc i64 %4 to i32
+    call void @srand(i32 noundef signext %5)
+    %6 = call signext i32 @rand()
+    store i32 %6, ptr %2, align 4
+    %7 = call signext i32 @rand()
+    store i32 %7, ptr %3, align 4
+    %8 = load i32, ptr %2, align 4
+    %9 = load i32, ptr %3, align 4
+    call void @compareValues(i32 noundef signext %8, i32 noundef signext %9)
+    ret i32 0
+  }
+
+  attributes #0 = { noinline nounwind optnone "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic-rv64" "target-features"="+64bit,+a,+c,+m,+relax,-d,-e,-experimental-smaia,-experimental-ssaia,-experimental-zacas,-experimental-zfa,-experimental-zfbfmin,-experimental-zicfilp,-experimental-zicond,-experimental-ztso,-experimental-zvbb,-experimental-zvbc,-experimental-zvfbfmin,-experimental-zvfbfwma,-experimental-zvkb,-experimental-zvkg,-experimental-zvkn,-experimental-zvknc,-experimental-zvkned,-experimental-zvkng,-experimental-zvknha,-experimental-zvknhb,-experimental-zvks,-experimental-zvksc,-experimental-zvksed,-experimental-zvksg,-experimental-zvksh,-experimental-zvkt,-f,-h,-save-restore,-svinval,-svnapot,-svpbmt,-v,-xcvalu,-xcvbi,-xcvbitmanip,-xcvmac,-xcvsimd,-xsfcie,-xsfvcp,-xtheadba,-xtheadbb,-xtheadbs,-xtheadcmo,-xtheadcondmov,-xtheadfmemidx,-xtheadmac,-xtheadmemidx,-xtheadmempair,-xtheadsync,-xtheadvdot,-xventanacondops,-zawrs,-zba,-zbb,-zbc,-zbkb,-zbkc,-zbkx,-zbs,-zca,-zcb,-zcd,-zce,-zcf,-zcmp,-zcmt,-zdinx,-zfh,-zfhmin,-zfinx,-zhinx,-zhinxmin,-zicbom,-zicbop,-zicboz,-zicntr,-zicsr,-zifencei,-zihintntl,-zihintpause,-zihpm,-zk,-zkn,-zknd,-zkne,-zknh,-zkr,-zks,-zksed,-zksh,-zkt,-zmmul,-zve32f,-zve32x,-zve64d,-zve64f,-zve64x,-zvfh,-zvfhmin,-zvl1024b,-zvl128b,-zvl16384b,-zvl2048b,-zvl256b,-zvl32768b,-zvl32b,-zvl4096b,-zvl512b,-zvl64b,-zvl65536b,-zvl8192b" }
+  attributes #1 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic-rv64" "target-features"="+64bit,+a,+c,+m,+relax,-d,-e,-experimental-smaia,-experimental-ssaia,-experimental-zacas,-experimental-zfa,-experimental-zfbfmin,-experimental-zicfilp,-experimental-zicond,-experimental-ztso,-experimental-zvbb,-experimental-zvbc,-experimental-zvfbfmin,-experimental-zvfbfwma,-experimental-zvkb,-experimental-zvkg,-experimental-zvkn,-experimental-zvknc,-experimental-zvkned,-experimental-zvkng,-experimental-zvknha,-experimental-zvknhb,-experimental-zvks,-experimental-zvksc,-experimental-zvksed,-experimental-zvksg,-experimental-zvksh,-experimental-zvkt,-f,-h,-save-restore,-svinval,-svnapot,-svpbmt,-v,-xcvalu,-xcvbi,-xcvbitmanip,-xcvmac,-xcvsimd,-xsfcie,-xsfvcp,-xtheadba,-xtheadbb,-xtheadbs,-xtheadcmo,-xtheadcondmov,-xtheadfmemidx,-xtheadmac,-xtheadmemidx,-xtheadmempair,-xtheadsync,-xtheadvdot,-xventanacondops,-zawrs,-zba,-zbb,-zbc,-zbkb,-zbkc,-zbkx,-zbs,-zca,-zcb,-zcd,-zce,-zcf,-zcmp,-zcmt,-zdinx,-zfh,-zfhmin,-zfinx,-zhinx,-zhinxmin,-zicbom,-zicbop,-zicboz,-zicntr,-zicsr,-zifencei,-zihintntl,-zihintpause,-zihpm,-zk,-zkn,-zknd,-zkne,-zknh,-zkr,-zks,-zksed,-zksh,-zkt,-zmmul,-zve32f,-zve32x,-zve64d,-zve64f,-zve64x,-zvfh,-zvfhmin,-zvl1024b,-zvl128b,-zvl16384b,-zvl2048b,-zvl256b,-zvl32768b,-zvl32b,-zvl4096b,-zvl512b,-zvl64b,-zvl65536b,-zvl8192b" }
+
+  !llvm.module.flags = !{!0, !1, !2, !3}
+  !llvm.ident = !{!4}
+
+  !0 = !{i32 1, !"wchar_size", i32 4}
+  !1 = !{i32 1, !"target-abi", !"lp64"}
+  !2 = !{i32 7, !"frame-pointer", i32 2}
+  !3 = !{i32 8, !"SmallDataLimit", i32 8}
+  !4 = !{!"clang version 18.0.0 (https://github.com/Nish1809/llvm-project-non-spec.git a906bd2708ef3a022fcea8b4aafafabf770c4b87)"}
+  !5 = distinct !{!5, !6}
+  !6 = !{!"llvm.loop.mustprogress"}
+  !7 = distinct !{!7, !6}
+
+...
+---
+name:            compareValues
+alignment:       2
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+isOutlined:      false
+debugInstrRef:   false
+failsVerification: false
+tracksDebugUserValues: true
+registers:       []
+liveins:
+  - { reg: '$x10', virtual-reg: '' }
+  - { reg: '$x11', virtual-reg: '' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    4
+  adjustsStack:    false
+  hasCalls:        true
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  localFrameSize:  20
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:
+  - { id: 0, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -4, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+  - { id: 1, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -8, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+  - { id: 2, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -12, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+  - { id: 3, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -16, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+  - { id: 4, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -20, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+entry_values:    []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo:
+  varArgsFrameIndex: 0
+  varArgsSaveSize: 0
+body:             |
+  bb.0 (%ir-block.2):
+    successors: %bb.1(0x40000000), %bb.6(0x40000000)
+    liveins: $x10, $x11
+
+    SW killed renamable $x10, %stack.0, 0 :: (store (s32) into %ir.3)
+    SW killed renamable $x11, %stack.1, 0 :: (store (s32) into %ir.4)
+    SW $x0, %stack.2, 0 :: (store (s32) into %ir.5)
+    renamable $x10 = LW %stack.0, 0 :: (dereferenceable load (s32) from %ir.3)
+    renamable $x11 = LW %stack.1, 0 :: (dereferenceable load (s32) from %ir.4)
+    BEQ killed renamable $x10, killed renamable $x11, %bb.6
+    PseudoBR %bb.1
+
+  bb.1 (%ir-block.11):
+    successors: %bb.2(0x80000000)
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    $x10 = ADDI $x0, 0
+    PseudoCALL target-flags(riscv-call) @time, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x10 = ADDIW killed renamable $x10, 0
+    PseudoCALL target-flags(riscv-call) @srand, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit-def $x2
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    SW $x0, %stack.3, 0 :: (store (s32) into %ir.6)
+    PseudoBR %bb.2
+
+  bb.2 (%ir-block.14):
+    successors: %bb.3(0x40000000), %bb.5(0x40000000)
+
+    renamable $x10 = LW %stack.3, 0 :: (dereferenceable load (s32) from %ir.6)
+    renamable $x11 = LUI 2
+    renamable $x11 = ADDIW killed renamable $x11, 1807
+    BLT killed renamable $x11, killed renamable $x10, %bb.5
+    PseudoBR %bb.3
+
+  bb.3 (%ir-block.17):
+    successors: %bb.4(0x80000000)
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoCALL target-flags(riscv-call) @rand, csr_ilp32_lp64, implicit-def dead $x1, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+    renamable $x10 = ADDW killed renamable $x11, killed renamable $x10
+    SW killed renamable $x10, %stack.2, 0 :: (store (s32) into %ir.5)
+    PseudoBR %bb.4
+
+  bb.4 (%ir-block.21):
+    successors: %bb.2(0x80000000)
+
+    renamable $x10 = LW %stack.3, 0 :: (dereferenceable load (s32) from %ir.6)
+    renamable $x10 = ADDIW killed renamable $x10, 1
+    SW killed renamable $x10, %stack.3, 0 :: (store (s32) into %ir.6)
+    PseudoBR %bb.2
+
+  bb.5 (%ir-block.24):
+    successors: %bb.11(0x80000000)
+
+    renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x10 = LUI target-flags(riscv-hi) @.str
+    renamable $x10 = ADDI killed renamable $x10, target-flags(riscv-lo) @.str
+    PseudoCALL target-flags(riscv-call) @printf, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit $x11, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoBR %bb.11
+
+  bb.6 (%ir-block.27):
+    successors: %bb.7(0x80000000)
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    $x10 = ADDI $x0, 0
+    PseudoCALL target-flags(riscv-call) @time, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x10 = ADDIW killed renamable $x10, 0
+    PseudoCALL target-flags(riscv-call) @srand, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit-def $x2
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    SW $x0, %stack.4, 0 :: (store (s32) into %ir.7)
+    PseudoBR %bb.7
+
+  bb.7 (%ir-block.30):
+    successors: %bb.8(0x40000000), %bb.10(0x40000000)
+
+    renamable $x10 = LW %stack.4, 0 :: (dereferenceable load (s32) from %ir.7)
+    renamable $x11 = LUI 1
+    renamable $x11 = ADDIW killed renamable $x11, 903
+    BLT killed renamable $x11, killed renamable $x10, %bb.10
+    PseudoBR %bb.8
+
+  bb.8 (%ir-block.33):
+    successors: %bb.9(0x80000000)
+
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoCALL target-flags(riscv-call) @rand, csr_ilp32_lp64, implicit-def dead $x1, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+    renamable $x11 = SUBW killed renamable $x11, killed renamable $x10
+    SW killed renamable $x11, %stack.2, 0 :: (store (s32) into %ir.5)
+    PseudoBR %bb.9
+
+  bb.9 (%ir-block.37):
+    successors: %bb.7(0x80000000)
+
+    renamable $x10 = LW %stack.4, 0 :: (dereferenceable load (s32) from %ir.7)
+    renamable $x10 = ADDIW killed renamable $x10, 1
+    SW killed renamable $x10, %stack.4, 0 :: (store (s32) into %ir.7)
+    PseudoBR %bb.7
+
+  bb.10 (%ir-block.40):
+    successors: %bb.11(0x80000000)
+
+    renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.5)
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x10 = LUI target-flags(riscv-hi) @.str.1
+    renamable $x10 = ADDI killed renamable $x10, target-flags(riscv-lo) @.str.1
+    PseudoCALL target-flags(riscv-call) @printf, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit $x11, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoBR %bb.11
+
+  bb.11 (%ir-block.43):
+    PseudoRET
+
+...
+---
+name:            main
+alignment:       2
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+isOutlined:      false
+debugInstrRef:   false
+failsVerification: false
+tracksDebugUserValues: true
+registers:       []
+liveins:         []
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    4
+  adjustsStack:    false
+  hasCalls:        true
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  localFrameSize:  12
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:
+  - { id: 0, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -4, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+  - { id: 1, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -8, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+  - { id: 2, name: '', type: default, offset: 0, size: 4, alignment: 4,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      local-offset: -12, debug-info-variable: '', debug-info-expression: '',
+      debug-info-location: '' }
+entry_values:    []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo:
+  varArgsFrameIndex: 0
+  varArgsSaveSize: 0
+body:             |
+  bb.0 (%ir-block.0):
+    SW $x0, %stack.0, 0 :: (store (s32) into %ir.1)
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    $x10 = ADDI $x0, 0
+    PseudoCALL target-flags(riscv-call) @time, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    renamable $x10 = ADDIW killed renamable $x10, 0
+    PseudoCALL target-flags(riscv-call) @srand, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit-def $x2
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoCALL target-flags(riscv-call) @rand, csr_ilp32_lp64, implicit-def dead $x1, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    SW killed renamable $x10, %stack.1, 0 :: (store (s32) into %ir.2)
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoCALL target-flags(riscv-call) @rand, csr_ilp32_lp64, implicit-def dead $x1, implicit-def $x2, implicit-def $x10
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    SW killed renamable $x10, %stack.2, 0 :: (store (s32) into %ir.3)
+    renamable $x10 = LW %stack.1, 0 :: (dereferenceable load (s32) from %ir.2)
+    renamable $x11 = LW %stack.2, 0 :: (dereferenceable load (s32) from %ir.3)
+    ADJCALLSTACKDOWN 0, 0, implicit-def dead $x2, implicit $x2
+    PseudoCALL target-flags(riscv-call) @compareValues, csr_ilp32_lp64, implicit-def dead $x1, implicit $x10, implicit $x11, implicit-def $x2
+    ADJCALLSTACKUP 0, 0, implicit-def dead $x2, implicit $x2
+    $x10 = ADDI $x0, 0
+    PseudoRET implicit $x10
+
+...

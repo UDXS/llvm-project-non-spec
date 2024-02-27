@@ -950,7 +950,6 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
     SDValue N2 = Node->getOperand(2);
     //auto condition = condcode->get();
     if ((CC) == ISD::SETNE) {
-      std::cout << "YEEEEEEEEEEEEEEEEEEEEEEEET " << "\n";
     }
     SDNode *BMOVT = CurDAG->getMachineNode(RISCV::BMOVT, DL, VT, CurDAG->getBasicBlock(MBB));
     SDNode *SLTIU = CurDAG->getMachineNode(RISCV::SLTIU, DL, VT, N1->getOperand(1), N2->getOperand(1));
