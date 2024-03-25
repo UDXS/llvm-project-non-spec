@@ -574,6 +574,7 @@ class Instruction : InstructionEncoding {
   bit isConvertibleToThreeAddress = false;  // Can this 2-addr instruction promote?
   bit isCommutable = false;     // Is this 3 operand instruction commutable?
   bit isTerminator = false;     // Is this part of the terminator for a basic block?
+  bit isBMOV = false;
   bit isReMaterializable = false; // Is this instruction re-materializable?
   bit isPredicable = false;     // 1 means this instruction is predicable
                                 // even if it does not have any operand

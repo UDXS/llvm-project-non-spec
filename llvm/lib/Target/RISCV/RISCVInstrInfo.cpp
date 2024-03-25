@@ -814,28 +814,29 @@ static void parseCondBranch(MachineInstr &LastInst, MachineBasicBlock *&Target,
   Cond.push_back(LastInst.getOperand(1));
 }
 
-static RISCVCC::CondCode getCondFromBMOVC(uint64_t cc) {
-  switch (cc) {
+static RISCVCC::CondCode getCondFromBMOVC(unsigned int Opcode) {
+  switch (Opcode) {
   default:
     return RISCVCC::COND_INVALID;
-    case 1:
+    case RISCV::BMOVC_EQ:
       return RISCVCC::COND_EQ;
-    case 0:
+    case RISCV::BMOVC_NE:
       return RISCVCC::COND_NE;
-    case 2:
+    case RISCV::BMOVC_LT:
       return RISCVCC::COND_LT;
   }
 }
 static void parseBMOV(MachineBasicBlock &MBB, MachineBasicBlock *&Target, SmallVectorImpl<MachineOperand> &Cond) {
 
   for (auto &MI : MBB) {
-    if (MI.getDesc().getOpcode() == RISCV::BMOVT) {
+    if (MI.getDesc().getOpcode() == RISCV::BMOVT_J) {
       Target = MI.getOperand(1).getMBB();
     }
-    else if (MI.getDesc().getOpcode() == RISCV::BMOVC) {
-      unsigned CC = getCondFromBMOVC(MI.getOperand(2).getImm());
+    else if (MI.getDesc().getOpcode() == RISCV::BMOVC_EQ || MI.getDesc().getOpcode() == RISCV::BMOVC_LT || MI.getDesc().getOpcode() == RISCV::BMOVC_NE) {
+      unsigned CC = getCondFromBMOVC(MI.getDesc().getOpcode());
       Cond.push_back(MachineOperand::CreateImm(CC));
       Cond.push_back(MI.getOperand(1));
+      Cond.push_back(MI.getOperand(2));
     }
   }
 }
@@ -889,7 +890,6 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   Cond.clear();
   // If the block has no terminators, it just falls into the block after it.
   MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
-  //std::cout <<"In analyze branch where the second last instr is "<< std::prev(I)->getDesc().getOpcode()<< " and last instr is " << I->getDesc().getOpcode() << std::endl;
   if (I == MBB.end() || !isUnpredicatedTerminator(*I))
     return false;
 
@@ -928,6 +928,12 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   // We can't handle blocks with more than 2 terminators.
   if (NumTerminators > 2)
     return true;
+
+//***********************************************************************************************************************************************************
+// Handling the two cases where a basic block ends with PB
+// 1. PB is the last instruction in the bb and you parse the it to get True Basic Block (TBB), False Basic Block (FBB) and Condition info
+// 2. PB is the second last instruction followed by an unconditional jump to the FBB (this seems to happen on earlier passes after which jump is eliminated
+//***********************************************************************************************************************************************************
 
   if (NumTerminators == 1 && I->getDesc().getOpcode() == RISCV::PB) {
       parseBMOV(MBB, TBB, Cond);
@@ -968,47 +974,193 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   return true;
 }
 
-unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
+void eraseBMOV(MachineBasicBlock &MBB) {
+    std::vector<Register> cc_op;
+    unsigned int bmovc_type;
+    for (auto I = MBB.begin(); I != MBB.end(); ) {
+      auto &Instr = *I;
+      if(Instr.getDesc().getOpcode() == RISCV::PB || Instr.getDesc().getOpcode() == RISCV::BMOVT_J || Instr.getDesc().getOpcode() == RISCV::BMOVS_J) {
+        auto nI = std::next(I);
+        Instr.eraseFromParent();
+        I = nI;
+        //std::cout << "Hi\n";
+      }
+      else if (Instr.getDesc().getOpcode() == RISCV::BMOVC_EQ || Instr.getDesc().getOpcode() == RISCV::BMOVC_NE || Instr.getDesc().getOpcode() == RISCV::BMOVC_LT) {
+        cc_op.push_back(Instr.getOperand(1).getReg());
+        cc_op.push_back(Instr.getOperand(2).getReg());
+        bmovc_type = Instr.getDesc().getOpcode();
+        auto nI = std::next(I);
+        Instr.eraseFromParent();
+        I = nI;
+      }
+      else if (!cc_op.empty() && (bmovc_type == RISCV::BMOVC_EQ || bmovc_type == RISCV::BMOVC_NE || bmovc_type == RISCV::BMOVC_LT) && (Instr.getDesc().getOpcode() == RISCV::SUB && Instr.getOperand(0).getReg() == Instr.getOperand(1).getReg() && Instr.getOperand(1).getReg() == cc_op[0] && Instr.getOperand(2).getReg() == cc_op[1])) {
+        auto nI = std::next(I);
+        Instr.eraseFromParent();
+        I = nI;       
+      }
+      else if (!cc_op.empty() && bmovc_type == RISCV::BMOVC_EQ && (Instr.getDesc().getOpcode() == RISCV::SLTIU && Instr.getOperand(0).getReg() == cc_op[1] && Instr.getOperand(1).getReg() == cc_op[0] && Instr.getOperand(2).getReg() == 0x1)) {
+        auto nI = std::next(I);
+        Instr.eraseFromParent();
+        I = nI;       
+      }
+      else if (!cc_op.empty() && bmovc_type == RISCV::BMOVC_LT && (Instr.getDesc().getOpcode() == RISCV::SLTI && Instr.getOperand(0).getReg() == cc_op[1] && Instr.getOperand(1).getReg() == cc_op[0] && Instr.getOperand(2).getReg() == 0x1)) {
+        auto nI = std::next(I);
+        Instr.eraseFromParent();
+        I = nI;       
+      }
+      else if (!cc_op.empty() && bmovc_type == RISCV::BMOVC_NE && (Instr.getDesc().getOpcode() == RISCV::SLTIU && Instr.getOperand(0).getReg() == cc_op[1] && Instr.getOperand(2).getReg() == cc_op[0] && Instr.getOperand(1).getReg() == RISCV::X0)) {
+        auto nI = std::next(I);
+        Instr.eraseFromParent();
+        I = nI;       
+      }      
+      else {
+        I++;
+      }
+    }
+}
+
+unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB, 
                                       int *BytesRemoved) const {
   if (BytesRemoved)
     *BytesRemoved = 0;
   MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
   if (I == MBB.end())
     return 0;
-
   if ((!I->getDesc().isUnconditionalBranch() &&
-      !I->getDesc().isConditionalBranch()) || (I->getDesc().getOpcode() == RISCV::PB))
+      !I->getDesc().isConditionalBranch()))
     return 0;
 
   // Remove the branch.
-  if (BytesRemoved)
+  /*if (BytesRemoved)
     *BytesRemoved += getInstSizeInBytes(*I);
-  I->eraseFromParent();
+  I->eraseFromParent();*/
 
+  if (BytesRemoved) {
+    if (I->getDesc().getOpcode() == RISCV::PB)
+      *BytesRemoved += 32;
+    else 
+      *BytesRemoved += getInstSizeInBytes(*I);
+  }
+  
+  if (I->getDesc().getOpcode() == RISCV::PB) {
+    eraseBMOV(MBB);
+  }
+  else {
+    I->eraseFromParent();
+  }
   I = MBB.end();
 
   if (I == MBB.begin())
     return 1;
   --I;
-  if (!I->getDesc().isConditionalBranch() || I->getDesc().getOpcode() == RISCV::PB)
+  if (!I->getDesc().isConditionalBranch())// || I->getDesc().getOpcode() == RISCV::PB)
     return 1;
 
-
   // Remove the branch.
-  if (BytesRemoved)
+  /*if (BytesRemoved)
     *BytesRemoved += getInstSizeInBytes(*I);
-  I->eraseFromParent();
+  I->eraseFromParent();*/
+
+  if (BytesRemoved) {
+    if (I->getDesc().getOpcode() == RISCV::PB)
+      *BytesRemoved += 32;
+    else 
+      *BytesRemoved += getInstSizeInBytes(*I);
+  }
+  
+  if (I->getDesc().getOpcode() == RISCV::PB)
+    eraseBMOV(MBB);
+  else 
+    I->eraseFromParent();
   return 2;
 }
 
-static bool containsPB(MachineBasicBlock &MBB) {
-  for (auto &MI : MBB) {
-    if(MI.getDesc().getOpcode() == RISCV::PB) {
-      return true;
-    }
+
+void insertBMOV(MachineBasicBlock &MBB, MachineBasicBlock *TBB, const DebugLoc &DL, ArrayRef<MachineOperand> Cond) {
+  MachineFunction *MF = MBB.getParent();
+  const auto &STI = MF->getSubtarget<RISCVSubtarget>();
+  const RISCVInstrInfo *TII = STI.getInstrInfo();
+  Register DestReg_BPR_T = MF->getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
+  Register DestReg_BPR_S = MF->getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
+  Register DestReg_BPR_C = MF->getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
+  auto cc = static_cast<RISCVCC::CondCode>(Cond[0].getImm());        
+
+  BuildMI(&MBB, DL, TII->get(RISCV::BMOVT_J))
+          .addReg(RISCV::BT0, RegState::Define)
+          .addMBB(TBB);
+
+  BuildMI(&MBB, DL, TII->get(RISCV::BMOVS_J))
+          .addReg(RISCV::BS0, RegState::Define)
+          .addMBB(TBB);
+        
+  if (cc == RISCVCC::COND_NE) {
+    BuildMI(&MBB, DL, TII->get(RISCV::SUB))
+            .addReg(Cond[2].getReg(), RegState::Define)
+            .addReg(Cond[1].getReg())
+            .addReg(Cond[2].getReg()); 
+
+    BuildMI(&MBB, DL, TII->get(RISCV::SLTIU))
+            .addReg(Cond[1].getReg(), RegState::Define)
+            .addReg(RISCV::X0)
+            .addReg(Cond[2].getReg());
+
+    BuildMI(&MBB, DL, TII->get(RISCV::BMOVC_NE))
+            .addReg(RISCV::BC0, RegState::Define)
+            .addReg(Cond[1].getReg())
+            .addReg(Cond[2].getReg());
+
+    BuildMI(&MBB, DL, TII->get(RISCV::PB))
+              //.addReg(DestReg_BPR_T, RegState::Define)
+            .addReg(RISCV::BC0)
+            .addReg(RISCV::BS0)
+            .addReg(RISCV::BT0);
   }
-  return false;
+  else if (cc == RISCVCC::COND_EQ) {
+    BuildMI(&MBB, DL, TII->get(RISCV::SUB))
+            .addReg(Cond[2].getReg(), RegState::Define)
+            .addReg(Cond[1].getReg())
+            .addReg(Cond[2].getReg()); 
+
+    BuildMI(&MBB, DL, TII->get(RISCV::SLTIU))
+            .addReg(Cond[1].getReg(), RegState::Define)
+            .addReg(Cond[2].getReg())
+            .addImm(0x1);
+
+    BuildMI(&MBB, DL, TII->get(RISCV::BMOVC_EQ))
+            .addReg(RISCV::BC0, RegState::Define)
+            .addReg(Cond[1].getReg())
+            .addReg(Cond[2].getReg());
+
+    BuildMI(&MBB, DL, TII->get(RISCV::PB))
+              //.addReg(DestReg_BPR_T, RegState::Define)
+            .addReg(RISCV::BC0)
+            .addReg(RISCV::BS0)
+            .addReg(RISCV::BT0);
+  }
+  else if (cc == RISCVCC::COND_LT) {
+    BuildMI(&MBB, DL, TII->get(RISCV::SUB))
+            .addReg(Cond[2].getReg(), RegState::Define)
+            .addReg(Cond[1].getReg())
+            .addReg(Cond[2].getReg());  
+
+    BuildMI(&MBB, DL, TII->get(RISCV::SLTI))
+            .addReg(Cond[1].getReg(), RegState::Define)
+            .addReg(Cond[2].getReg())
+            .addImm(0x0);
+
+    BuildMI(&MBB, DL, TII->get(RISCV::BMOVC_LT))
+            .addReg(RISCV::BC0, RegState::Define)
+            .addReg(Cond[1].getReg())
+            .addReg(Cond[2].getReg());
+
+    BuildMI(&MBB, DL, TII->get(RISCV::PB))
+            .addReg(RISCV::BC0)
+            .addReg(RISCV::BS0)
+            .addReg(RISCV::BT0);
+                      
+    }
 }
+
 // Inserts a branch into the end of the specific MachineBasicBlock, returning
 // the number of instructions inserted.
 unsigned RISCVInstrInfo::insertBranch(
@@ -1017,9 +1169,6 @@ unsigned RISCVInstrInfo::insertBranch(
   if (BytesAdded)
     *BytesAdded = 0;
 
-  if(containsPB(MBB)) {
-    return 0;
-  }
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
   assert((Cond.size() == 3 || Cond.size() == 0) &&
@@ -1033,17 +1182,26 @@ unsigned RISCVInstrInfo::insertBranch(
     return 1;
   }
 
+
+  //return 0;
   // Either a one or two-way conditional branch.
-  auto CC = static_cast<RISCVCC::CondCode>(Cond[0].getImm());
+  /*auto CC = static_cast<RISCVCC::CondCode>(Cond[0].getImm());
   MachineInstr &CondMI =
       *BuildMI(&MBB, DL, getBrCond(CC)).add(Cond[1]).add(Cond[2]).addMBB(TBB);
   if (BytesAdded)
     *BytesAdded += getInstSizeInBytes(CondMI);
-
+  std::cout << "ADDING A BRANCH*******************************************" << CondMI.getOpcode() << std::endl;
   // One-way conditional branch.
   if (!FBB)
     return 1;
-
+  */
+  insertBMOV(MBB, TBB, DL, Cond);
+  if (BytesAdded)
+    *BytesAdded += 32;
+  //std::cout << "ADDING A BRANCH*******************************************" << CondMI.getOpcode() << std::endl;
+  // One-way conditional branch.
+  if (!FBB)
+    return 1;
   // Two-way conditional branch.
   MachineInstr &MI = *BuildMI(&MBB, DL, get(RISCV::PseudoBR)).addMBB(FBB);
   if (BytesAdded)

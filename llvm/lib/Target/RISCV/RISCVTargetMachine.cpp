@@ -102,7 +102,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTarget() {
   initializeRISCVInitUndefPass(*PR);
   initializeRISCVMoveMergePass(*PR);
   initializeRISCVPushPopOptPass(*PR);
-  initializeRISCVMachineInstrPrinterPass(*PR);
+  initializeRISCVBMOVInsertionPass(*PR);
 }
 
 static StringRef computeDataLayout(const Triple &TT) {
@@ -418,7 +418,7 @@ void RISCVPassConfig::addMachineSSAOptimization() {
 }
 
 void RISCVPassConfig::addPreRegAlloc() {
-  //addPass(createRISCVMachineInstrPrinterPass());
+  addPass(createRISCVBMOVInsertionPass()); // Inserting the BMOV pass pre reg-alloc to utilize the machine instruction scheduler and post regalloc scheduler
   addPass(createRISCVPreRAExpandPseudoPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None)
     addPass(createRISCVMergeBaseOffsetOptPass());

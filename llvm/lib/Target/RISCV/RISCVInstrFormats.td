@@ -381,20 +381,6 @@ class RVInstI<bits<3> funct3, RISCVOpcode opcode, dag outs, dag ins,
   let Inst{31-20} = imm12;
 }
 
-class RVInstBMOVST<bits<3> funct3, RISCVOpcode opcode, dag outs, dag ins,
-              string opcodestr, string argstr>
-    : RVInst<outs, ins, opcodestr, argstr, [], InstFormatI> {
-  bits<12> imm12;
-  bits<5> imm5;
-  bits<5> rs1;
-  bits<5> rd;
-
-  let Inst{31-20} = imm12;
-  let Inst{19-15} = imm5;
-  let Inst{14-12} = funct3;
-  let Inst{11-7} = rd;
-  let Inst{6-0} = opcode.Value;
-}
 
 class RVInstIShift<bits<5> imm11_7, bits<3> funct3, RISCVOpcode opcode,
                    dag outs, dag ins, string opcodestr, string argstr>

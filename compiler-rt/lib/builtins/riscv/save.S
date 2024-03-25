@@ -182,5 +182,5 @@ __riscv_save_0:
   jr     t0
 
 #else
-# error "xlen must be 32 or 64 for save-restore implementation
+# error "xlen must be 32 or 64 for save-restore implementation"
 #endif

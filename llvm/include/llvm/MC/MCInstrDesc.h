@@ -187,6 +187,7 @@ enum Flag {
   Trap,
   VariadicOpsAreDefs,
   Authenticated,
+  BMOV,
 };
 } // namespace MCID
 
@@ -300,6 +301,8 @@ public:
   /// but before control flow occurs.
   bool isTerminator() const { return Flags & (1ULL << MCID::Terminator); }
 
+  bool isBMOV() const { return Flags & (1ULL << MCID::BMOV); }
+
   /// Returns true if this is a conditional, unconditional, or
   /// indirect branch.  Predicates below can be used to discriminate between
   /// these cases, and the TargetInstrInfo::analyzeBranch method can be used to
@@ -315,7 +318,7 @@ public:
   /// block.  The TargetInstrInfo::analyzeBranch method can be used to get more
   /// information about this branch.
   bool isConditionalBranch() const {
-    return isBranch() && !isBarrier() && !isIndirectBranch();
+    return isBranch() && !isBarrier() && !isIndirectBranch();// && !isBMOV();
   }
 
   /// Return true if this is a branch which always

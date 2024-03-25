@@ -722,6 +722,7 @@ bool BranchRelaxation::relaxBranchInstructions() {
 }
 
 bool BranchRelaxation::runOnMachineFunction(MachineFunction &mf) {
+  return false;
   MF = &mf;
 
   LLVM_DEBUG(dbgs() << "***** BranchRelaxation *****\n");

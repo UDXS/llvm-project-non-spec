@@ -736,48 +736,66 @@ def OR   : ALU_rr<0b0000000, 0b110, "or", Commutable=1>,
 def AND  : ALU_rr<0b0000000, 0b111, "and", Commutable=1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
 
+
+//*******************************************************************************************************************************************
+// Tablegen definitions for BMOV type instructions (Incomplete : Needs Unconditional Branches and Loop branches)
+//*******************************************************************************************************************************************
 let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
-def BMOVT
-			: RVInstU<OPC_CUSTOM_1, (outs BPR_T:$rd), (ins uimm20:$imm20),
+def BMOVT_J
+			: RVInstJ<OPC_CUSTOM_1, (outs BPR_T:$rd), (ins uimm20:$imm20),
 								"bmovt", "$rd, $imm20">, Sched<[WriteBMOV]>;
 }
 
+
 let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
-def BMOVS
-			: RVInstU<OPC_CUSTOM_2, (outs BPR_S:$rd), (ins uimm20:$imm20),
+def BMOVS_J
+			: RVInstJ<OPC_CUSTOM_0, (outs BPR_S:$rd), (ins uimm20:$imm20),
 								"bmovs", "$rd, $imm20">, Sched<[WriteBMOV]>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
-def BMOVC
-			: RVInstI<0b010, OPC_CUSTOM_3, (outs BPR_C:$rd), (ins GPR:$rs1, simm12:$imm12),
+def BMOV_I
+			: RVInstI<0b000, OPC_CUSTOM_2, (outs BPR_C:$rd), (ins GPR:$rs1, simm12:$imm12),
 								"bmovc", "$rd, $rs1, $imm12">;
 }
 
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+def BMOVC_EQ
+			: RVInstR<0b1111110, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rs1">;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+def BMOVC_NE
+			: RVInstR<0b1111110, 0b001, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rs1">;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+def BMOVC_LT
+			: RVInstR<0b1111110, 0b010, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rs1">;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+def BMOVUC
+			: RVInstR<0b1111100, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd">;
+}
 
 //class PB_nodestr<bits<7> funct7, bits<3> opcode, string opcodestr>
 //  : RVInstR<funct7
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch=1, isTerminator=1, isBMOV=1  in {
 def PB
-			: RVInstR<0b1111111, 0b011, OPC_CUSTOM_3, (outs), (ins BPR_C:$rs1, BPR_S:$rs2, BPR_T:$rd),
+			: RVInstR<0b1111111, 0b000, OPC_CUSTOM_3, (outs), (ins BPR_C:$rs1, BPR_S:$rs2, BPR_T:$rd),
 								"pb", "s:$rs2, t:$rd, c:$rs1">;               
 }
 
-/*let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
-def BMOVC
-			: RVInstU<OPC_CUSTOM_2, (outs BPR_C:$rd), (ins uimm20:$imm20),
-								"bmovc", "$rd, $rs">;
-}*/
 
-
-/*let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Constraints = "$rs1 = $rd" in {
-def BMOVS
-			: RVInstBMOVST<0b000, OPC_CUSTOM_1, (outs BPR:$rd), (ins simm13_lsb0:$imm12, BPR:$rs1, uimm5:$imm5),
-								"bmovs", "$rd, $imm12, $rs1, $imm5">;
-
-}
-*/        
+//******************************************************************************************************************************
+//******************************************************************************************************************************
 
 let hasSideEffects = 1, mayLoad = 0, mayStore = 0 in {
 def FENCE : RVInstI<0b000, OPC_MISC_MEM, (outs),

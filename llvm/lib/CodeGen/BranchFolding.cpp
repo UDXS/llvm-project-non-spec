@@ -121,6 +121,7 @@ INITIALIZE_PASS(BranchFolderPass, DEBUG_TYPE,
                 "Control Flow Optimizer", false, false)
 
 bool BranchFolderPass::runOnMachineFunction(MachineFunction &MF) {
+  return false;
   if (skipFunction(MF.getFunction()))
     return false;
 
@@ -1322,6 +1323,7 @@ static void salvageDebugInfoFromEmptyBlock(const TargetInstrInfo *TII,
 
 bool BranchFolder::OptimizeBlock(MachineBasicBlock *MBB) {
   bool MadeChange = false;
+
   MachineFunction &MF = *MBB->getParent();
 ReoptimizeBlock:
 
@@ -1380,7 +1382,7 @@ ReoptimizeBlock:
 
   // Check to see if we can simplify the terminator of the block before this
   // one.
-  MachineBasicBlock &PrevBB = *std::prev(MachineFunction::iterator(MBB));
+  MachineBasicBlock &PrevBB = *std::prev(MachineFunction::iterator(MBB)); 
 
   MachineBasicBlock *PriorTBB = nullptr, *PriorFBB = nullptr;
   SmallVector<MachineOperand, 4> PriorCond;
@@ -1446,16 +1448,16 @@ ReoptimizeBlock:
       goto ReoptimizeBlock;
     }
 
-    // If the prior block branches somewhere else on the condition and here if
-    // the condition is false, remove the uncond second branch.
-    if (PriorFBB == MBB) {
-      DebugLoc dl = getBranchDebugLoc(PrevBB);
-      TII->removeBranch(PrevBB);
-      TII->insertBranch(PrevBB, PriorTBB, nullptr, PriorCond, dl);
-      MadeChange = true;
-      ++NumBranchOpts;
-      goto ReoptimizeBlock;
-    }
+    // If the prior block branches somewhere else on the condition and here if                                              
+    // the condition is false, remove the uncond second branch.                                                             
+    if (PriorFBB == MBB) {                                                                                                  
+      DebugLoc dl = getBranchDebugLoc(PrevBB);                                                                             
+      TII->removeBranch(PrevBB);                                                                                          
+      TII->insertBranch(PrevBB, PriorTBB, nullptr, PriorCond, dl);                                                     
+      MadeChange = true;                                                                                                   
+      ++NumBranchOpts;                                                                                                      
+      goto ReoptimizeBlock;                                                                                                 
+    }                                                                                                                       
 
     // If the prior block branches here on true and somewhere else on false, and
     // if the branch condition is reversible, reverse the branch to create a
