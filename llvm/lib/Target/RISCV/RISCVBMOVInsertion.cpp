@@ -1,0 +1,148 @@
+#include "RISCV.h"
+#include "RISCVInstrInfo.h"
+#include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/TargetRegisterInfo.h"
+#include "RISCVSubtarget.h"
+#include "llvm/MC/MCSymbol.h"
+#include "llvm/CodeGen/AsmPrinter.h"
+using namespace llvm;
+
+
+//*******************************************************************************************************************************************
+// This is a LLVM backend pass that right now looks for conditional branches, turns them into BMOV instructions and later deletes the 
+// branch. The BMOVC has two GPR operands which are the original operands used in the conditional branch it's replacing
+//*******************************************************************************************************************************************
+#define RISCV_BMOV_INSERTION_PASS_NAME                                   \
+  "RISCV bmov insertion pass"
+
+static uint8_t bmov_index = 0;
+namespace {
+
+class RISCVBMOVInsertion : public MachineFunctionPass {
+public:
+  static char ID;
+
+  RISCVBMOVInsertion() : MachineFunctionPass(ID) {
+    initializeRISCVBMOVInsertionPass(*PassRegistry::getPassRegistry());
+  }
+
+  bool runOnMachineFunction(MachineFunction &MF) override;
+
+  StringRef getPassName() const override {
+    return RISCV_BMOV_INSERTION_PASS_NAME;
+  }
+};
+
+char RISCVBMOVInsertion::ID = 0;
+
+bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
+
+  for(auto &MBB : MF) {
+    //outs() << "Entering MBB\n";
+    for (auto &MI : MBB) {
+      if (MI.isConditionalBranch()) {  // Is the instruction a bne/beq/blt
+        const auto &STI = MF.getSubtarget<RISCVSubtarget>();
+        const RISCVInstrInfo *TII = STI.getInstrInfo();
+        Register DestReg_BPR_T = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
+        Register DestReg_BPR_S = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
+        Register DestReg_BPR_C = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
+        DebugLoc DL;
+        MachineInstrBuilder mib;
+        mib = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
+            .addReg(DestReg_BPR_T, RegState::Define)
+            .addMBB(MI.getOperand(2).getMBB());
+        mib.getInstr()->setBMOVIndex(bmov_index);    
+
+        mib = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVS_J)) // This currently takes in the target label, but it should take the source label eventually.
+            .addReg(DestReg_BPR_S, RegState::Define)
+            .addMBB(MI.getOperand(2).getMBB());
+        mib.getInstr()->setBMOVIndex(bmov_index); 
+        
+        if (MI.getOpcode() == RISCV::BNE) {
+          BuildMI(MBB, MI ,DL, TII->get(RISCV::SUB))
+              .addReg(MI.getOperand(1).getReg(), RegState::Define)
+              .addReg(MI.getOperand(0).getReg())
+              .addReg(MI.getOperand(1).getReg()); 
+
+          BuildMI(MBB, MI ,DL, TII->get(RISCV::SLTIU))
+              .addReg(MI.getOperand(0).getReg(), RegState::Define)
+              .addReg(RISCV::X0)
+              .addReg(MI.getOperand(1).getReg());
+
+          mib = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVC_NE))
+              .addReg(DestReg_BPR_C, RegState::Define)
+              .addReg(MI.getOperand(0).getReg())
+              .addReg(MI.getOperand(1).getReg());
+
+        }
+        else if (MI.getOpcode() == RISCV::BEQ) {
+          BuildMI(MBB, MI ,DL, TII->get(RISCV::SUB))
+              .addReg(MI.getOperand(1).getReg(), RegState::Define)
+              .addReg(MI.getOperand(0).getReg())
+              .addReg(MI.getOperand(1).getReg()); 
+
+          BuildMI(MBB, MI ,DL, TII->get(RISCV::SLTIU))
+              .addReg(MI.getOperand(0).getReg(), RegState::Define)
+              .addReg(MI.getOperand(1).getReg())
+              .addImm(0x1);
+
+          mib = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVC_EQ))
+              .addReg(DestReg_BPR_C, RegState::Define)
+              .addReg(MI.getOperand(0).getReg())
+              .addReg(MI.getOperand(1).getReg());
+        }        
+        else if (MI.getOpcode() == RISCV::BLT) {
+          BuildMI(MBB, MI ,DL, TII->get(RISCV::SUB))
+              .addReg(MI.getOperand(1).getReg(), RegState::Define)
+              .addReg(MI.getOperand(0).getReg())
+              .addReg(MI.getOperand(1).getReg()); 
+
+          BuildMI(MBB, MI ,DL, TII->get(RISCV::SLTI))
+              .addReg(MI.getOperand(0).getReg(), RegState::Define)
+              .addReg(MI.getOperand(1).getReg())
+              .addImm(0x0);
+
+          mib = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVC_LT))
+              .addReg(DestReg_BPR_C, RegState::Define)
+              .addReg(MI.getOperand(0).getReg())
+              .addReg(MI.getOperand(1).getReg());
+        }
+
+        mib.getInstr()->setBMOVIndex(bmov_index); 
+
+        mib = BuildMI(MBB, MI ,DL, TII->get(RISCV::PB))
+              //.addReg(DestReg_BPR_T, RegState::Define)
+              .addReg(DestReg_BPR_C)
+              .addReg(DestReg_BPR_S)
+              .addReg(DestReg_BPR_T);
+        mib.getInstr()->setBMOVIndex(bmov_index); 
+
+        MI.eraseFromBundle();
+        bmov_index++;            
+        break;
+        
+      }
+    }
+    //outs() << "Contents of MachineBasicBlock:\n";
+    //outs() << MBB << "\n";
+  }
+
+  return true;
+}
+
+} // end of anonymous namespace
+
+INITIALIZE_PASS(RISCVBMOVInsertion, "RISCV-BMOV-insertion",
+                RISCV_BMOV_INSERTION_PASS_NAME,
+                true, // is CFG only?
+                true  // is analysis?
+)
+
+namespace llvm {
+
+FunctionPass *createRISCVBMOVInsertionPass() {
+  return new RISCVBMOVInsertion();
+}
+
+} // namespace llvm
