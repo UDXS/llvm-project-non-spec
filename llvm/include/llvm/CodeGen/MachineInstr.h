@@ -120,7 +120,7 @@ public:
 private:
   const MCInstrDesc *MCID;              // Instruction descriptor.
   MachineBasicBlock *Parent = nullptr;  // Pointer to the owning basic block.
-  uint8_t bmov_index = 0; // BMOV INDEX NISHANT
+  int bmov_index = -1; // BMOV INDEX NISHANT
 
   // Operands are allocated by an ArrayRecycler.
   MachineOperand *Operands = nullptr;   // Pointer to the first operand.
@@ -402,13 +402,13 @@ public:
     Flags &= ~((uint32_t)Flag);
   }
 
-    void setBMOVIndex(uint8_t index) {
-      bmov_index = index;
-    }
+  void setBMOVIndex(int index) {
+    bmov_index = index;
+  }
 
-    uint8_t getBMOVIndex() {
-      return bmov_index;
-    }
+  int getBMOVIndex() {
+    return bmov_index;
+  }
     
   /// Return true if MI is in a bundle (but not the first MI in a bundle).
   ///

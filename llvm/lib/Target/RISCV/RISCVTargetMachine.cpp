@@ -103,6 +103,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeRISCVTarget() {
   initializeRISCVMoveMergePass(*PR);
   initializeRISCVPushPopOptPass(*PR);
   initializeRISCVBMOVInsertionPass(*PR);
+  initializeRISCVBMOVRegAllocPass(*PR);
 }
 
 static StringRef computeDataLayout(const Triple &TT) {
@@ -400,11 +401,12 @@ void RISCVPassConfig::addPreEmitPass2() {
   // possibility for other passes to break the requirements for forward
   // progress in the LR/SC block.
   addPass(createRISCVExpandAtomicPseudoPass());
-
+  //addPass(createRISCVBMOVRegAllocPass());
   // KCFI indirect call checks are lowered to a bundle.
   addPass(createUnpackMachineBundles([&](const MachineFunction &MF) {
     return MF.getFunction().getParent()->getModuleFlag("kcfi");
   }));
+  
 }
 
 void RISCVPassConfig::addMachineSSAOptimization() {
@@ -427,6 +429,7 @@ void RISCVPassConfig::addPreRegAlloc() {
       EnableRISCVDeadRegisterElimination)
     addPass(createRISCVDeadRegisterDefinitionsPass());
   addPass(createRISCVInsertReadWriteCSRPass());
+  //addPass(createRISCVBMOVRegAllocPass());
 }
 
 void RISCVPassConfig::addOptimizedRegAlloc() {
@@ -445,6 +448,7 @@ void RISCVPassConfig::addPostRegAlloc() {
   if (TM->getOptLevel() != CodeGenOptLevel::None &&
       EnableRedundantCopyElimination)
     addPass(createRISCVRedundantCopyEliminationPass());
+    //addPass(createRISCVBMOVRegAllocPass());
 }
 
 yaml::MachineFunctionInfo *

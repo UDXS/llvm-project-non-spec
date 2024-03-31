@@ -82,6 +82,9 @@ void initializeRISCVPushPopOptPass(PassRegistry &);
 FunctionPass *createRISCVBMOVInsertionPass();
 void initializeRISCVBMOVInsertionPass(PassRegistry &);
 
+FunctionPass *createRISCVBMOVRegAllocPass();
+void initializeRISCVBMOVRegAllocPass(PassRegistry &);
+
 InstructionSelector *createRISCVInstructionSelector(const RISCVTargetMachine &,
                                                     RISCVSubtarget &,
                                                     RISCVRegisterBankInfo &);

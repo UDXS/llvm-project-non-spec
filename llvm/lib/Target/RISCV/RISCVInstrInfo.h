@@ -24,7 +24,6 @@
 namespace llvm {
 
 class RISCVSubtarget;
-
 static const MachineMemOperand::Flags MONontemporalBit0 =
     MachineMemOperand::MOTargetFlag1;
 static const MachineMemOperand::Flags MONontemporalBit1 =
@@ -106,6 +105,7 @@ public:
                         const DebugLoc &dl,
                         int *BytesAdded = nullptr) const override;
 
+  //void insertBMOV(MachineBasicBlock &MBB, MachineBasicBlock *TBB, const DebugLoc &DL, ArrayRef<MachineOperand> Cond);
   void insertIndirectBranch(MachineBasicBlock &MBB,
                             MachineBasicBlock &NewDestBB,
                             MachineBasicBlock &RestoreBB, const DebugLoc &DL,
@@ -235,12 +235,13 @@ public:
 
   ArrayRef<std::pair<MachineMemOperand::Flags, const char *>>
   getSerializableMachineMemOperandTargetFlags() const override;
-
 protected:
   const RISCVSubtarget &STI;
 
 private:
   unsigned getInstBundleLength(const MachineInstr &MI) const;
+  
+  
 };
 
 namespace RISCV {
