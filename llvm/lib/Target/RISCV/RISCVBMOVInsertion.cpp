@@ -67,9 +67,8 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
                         RISCV::BMOVS_J)) // This currently takes in the target
                                          // label, but it should take the source
                                          // label eventually.
-                                             .addReg(DestReg_BPR_S,
-                                                     RegState::Define)
-                                             .addMBB(MI.getOperand(2).getMBB());
+                .addReg(DestReg_BPR_S, RegState::Define)
+                .addMBB(MI.getOperand(2).getMBB());
         MIB.getInstr()->setBMOVIndex(bmov_index);
 
         if (MI.getOpcode() == RISCV::BNE) {
@@ -77,16 +76,17 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
             BNE xA, xB, imm
             =>
             SUB xC, xA, xB ; Will be 0 if equal
-            SLT xD, x0, xC ; In equal case: 0 is not less than 0, so result 0. Else, result 1.
-            ; The above forms an inequality check. 
-            BMOVC_NE BPxC
-            
-            ; NE tag purely for IR annotation 
+            SLT xD, x0, xC ; In equal case: 0 is not less than 0, so result 0.
+            Else, result 1. ; The above forms an inequality check. BMOVC_NE BPxC
+
+            ; NE tag purely for IR annotation
             ;(We should probably  move this to a flag in RISCVInstrInfo)
           */
 
-         Register Comparator = MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
-         Register ResultBit = MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
+          Register Comparator =
+              MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
+          Register ResultBit =
+              MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
 
           MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::SUB))
                     .addReg(Comparator, RegState::Define)
@@ -103,23 +103,25 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
           MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVC_NE))
                     .addReg(DestReg_BPR_C, RegState::Define)
                     .addReg(ResultBit)
-                    .addReg(MI.getOperand(0).getReg()) // These two are only for analyzeBranch.
+                    .addReg(MI.getOperand(0).getReg())
                     .addReg(MI.getOperand(1).getReg());
+          // Last two operands are only for analyzeBranch.
           MIB.getInstr()->setBMOVIndex(bmov_index);
 
         } else if (MI.getOpcode() == RISCV::BEQ) {
-          
+
           /*
           BEQ xA, xB, imm
           =>
           SUB xC, xA, xB ; Will be 0 if equal
-          SLTIU xD, xC, 0x1 ; In equal case: xc = 0 is less than 1, so result 1. Else, result 0. 
-          ; the above forms an equality check. 
-          BMOVC_EQ BPxC
+          SLTIU xD, xC, 0x1 ; In equal case: xc = 0 is less than 1, so result 1.
+          Else, result 0. ; the above forms an equality check. BMOVC_EQ BPxC
         */
 
-          Register Comparator = MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
-          Register ResultBit = MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
+          Register Comparator =
+              MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
+          Register ResultBit =
+              MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
 
           MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::SUB))
                     .addReg(Comparator, RegState::Define)
@@ -146,13 +148,15 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
           BEQ xA, xB, imm
           =>
           SUB xC, xA, xB ; Will be 0 if equal
-          SLtI xD, xC, 0x0 ; In less-than case: xC is less than 0 (signed), so result 1. Else, result 0. 
-          ; the above forms the less-than check. 
+          SLtI xD, xC, 0x0 ; In less-than case: xC is less than 0 (signed), so
+          result 1. Else, result 0. ; the above forms the less-than check.
           BMOVC_LT BPxC
          */
 
-          Register Comparator = MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
-          Register ResultBit = MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
+          Register Comparator =
+              MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
+          Register ResultBit =
+              MF.getRegInfo().createVirtualRegister(&RISCV::GPRRegClass);
 
           MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::SUB))
                     .addReg(Comparator, RegState::Define)
