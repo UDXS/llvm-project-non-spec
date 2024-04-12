@@ -762,25 +762,25 @@ def BMOV_I
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVC_EQ
-			: RVInstR<0b1111110, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rs1">;
+			: RVInstR<0b1111110, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rc1">;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVC_NE
-			: RVInstR<0b1111110, 0b001, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rs1">;
+			: RVInstR<0b1111110, 0b001, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rc1">;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVC_LT
-			: RVInstR<0b1111110, 0b010, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rs1">;
+			: RVInstR<0b1111110, 0b010, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
+								"bmovc", "$rd, $rc1">;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVUC
-			: RVInstR<0b1111100, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rs1, GPR:$rs2),
+			: RVInstR<0b1111100, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
 								"bmovc", "$rd">;
 }
 

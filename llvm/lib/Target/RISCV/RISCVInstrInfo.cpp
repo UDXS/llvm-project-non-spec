@@ -842,8 +842,8 @@ static void parseBMOV(MachineBasicBlock &MBB, MachineBasicBlock *&Target, SmallV
     else if (MI.getDesc().getOpcode() == RISCV::BMOVC_EQ || MI.getDesc().getOpcode() == RISCV::BMOVC_LT || MI.getDesc().getOpcode() == RISCV::BMOVC_NE) {
       unsigned CC = getCondFromBMOVC(MI.getDesc().getOpcode());
       Cond.push_back(MachineOperand::CreateImm(CC));
-      Cond.push_back(MI.getOperand(1));
       Cond.push_back(MI.getOperand(2));
+      Cond.push_back(MI.getOperand(3));
     }
   }
 }
