@@ -558,6 +558,15 @@ class BranchCC_rri<bits<3> funct3, string opcodestr>
   let isTerminator = 1;
 }
 
+// RVInstR<0b1111110, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2), "bmovc_beq", "$rd, $rc1">;
+// OPC_OP_V shares same opcode as OP_BMOVC_R
+// OPC_OP_P shares same opcode as OP_BMOVC_I
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class BMOVC_rri<bits<3> funct3, string opcodestr>
+    : RVInstR<0b1010111, funct3, OPC_OP_V, (outs BPR_C:$rd),
+            (ins GPR:$rs1, GPR:$rs2), opcodestr, "$rd, $rs1, $rs2">;
+
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in {
 class Load_ri<bits<3> funct3, string opcodestr>
     : RVInstI<funct3, OPC_LOAD, (outs GPR:$rd), (ins GPRMem:$rs1, simm12:$imm12),
@@ -746,6 +755,11 @@ def BMOVT_J
 								"bmovt", "$rd, $imm20">, Sched<[WriteBMOV]>;
 }
 
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
+def BMOVT_I
+			: RVInstI<0b001, OPC_CUSTOM_2, (outs BPR_C:$rd), (ins GPR:$rs1, simm12:$imm12),
+								"bmovt", "$rd, $rs1, $imm12">;
+}
 
 let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
 def BMOVS_J
@@ -754,28 +768,18 @@ def BMOVS_J
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
-def BMOV_I
+def BMOVJ_I
 			: RVInstI<0b000, OPC_CUSTOM_2, (outs BPR_C:$rd), (ins GPR:$rs1, simm12:$imm12),
-								"bmovc", "$rd, $rs1, $imm12">;
-}
-
-
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
-def BMOVC_EQ
-			: RVInstR<0b1111110, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rc1">;
+								"bmovs", "$rd, $rs1, $imm12">;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
-def BMOVC_NE
-			: RVInstR<0b1111110, 0b001, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rc1">;
-}
-
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
-def BMOVC_LT
-			: RVInstR<0b1111110, 0b010, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd, $rc1">;
+    def BMOVC_BEQ : BMOVC_rri<0b000, "bmovc_beq">;
+    def BMOVC_BNE : BMOVC_rri<0b001, "bmovc_bne">;
+    def BMOVC_BLT : BMOVC_rri<0b100, "bmovc_blt">;
+    def BMOVC_BGE : BMOVC_rri<0b101, "bmovc_bge">;
+    def BMOVC_BLTU : BMOVC_rri<0b110, "bmovc_bltu">;
+    def BMOVC_BGEU : BMOVC_rri<0b111, "bmovc_bgeu">;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
@@ -783,9 +787,6 @@ def BMOVUC
 			: RVInstR<0b1111100, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
 								"bmovc", "$rd">;
 }
-
-//class PB_nodestr<bits<7> funct7, bits<3> opcode, string opcodestr>
-//  : RVInstR<funct7
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch=1, isTerminator=1, isBMOV=1  in {
 def PB
