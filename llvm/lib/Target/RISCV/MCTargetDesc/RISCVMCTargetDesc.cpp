@@ -120,7 +120,7 @@ public:
 
   bool evaluateBranch(const MCInst &Inst, uint64_t Addr, uint64_t Size,
                       uint64_t &Target) const override {
-    if (isConditionalBranch(Inst)) {
+    if (isConditionalBranch(Inst) && Inst.getOpcode() != RISCV::PB) {
       int64_t Imm;
       if (Size == 2)
         Imm = Inst.getOperand(1).getImm();
