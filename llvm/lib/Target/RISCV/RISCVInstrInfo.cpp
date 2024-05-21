@@ -42,7 +42,8 @@ using namespace llvm;
 #define GET_INSTRINFO_NAMED_OPS
 #include "RISCVGenInstrInfo.inc"
 
-std::vector<int> bmov_index_vector; // To capture bmov indexes that were removed and then reuse them during insertion
+std::vector<int> bmov_index_vector; // To capture bmov indexes that were removed
+                                    // and then reuse them during insertion
 
 static cl::opt<bool> PreferWholeRegisterMove(
     "riscv-prefer-whole-register-move", cl::init(false), cl::Hidden,
@@ -467,9 +468,9 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
         MIB = MIB.addReg(SrcReg, getKillRegState(KillSrc));
       if (UseVMV_V_V) {
         const MCInstrDesc &Desc = DefMBBI->getDesc();
-        MIB.add(DefMBBI->getOperand(RISCVII::getVLOpNum(Desc))); // AVL
+        MIB.add(DefMBBI->getOperand(RISCVII::getVLOpNum(Desc)));  // AVL
         MIB.add(DefMBBI->getOperand(RISCVII::getSEWOpNum(Desc))); // SEW
-        MIB.addImm(0); // tu, mu
+        MIB.addImm(0);                                            // tu, mu
         MIB.addReg(RISCV::VL, RegState::Implicit);
         MIB.addReg(RISCV::VTYPE, RegState::Implicit);
       }
@@ -491,8 +492,7 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
         auto MIB = BuildMI(MBB, MBBI, DL, get(Opc),
                            TRI->getSubReg(DstReg, SubRegIdx + I));
         if (UseVMV_V_V)
-          MIB.addReg(TRI->getSubReg(DstReg, SubRegIdx + I),
-                     RegState::Undef);
+          MIB.addReg(TRI->getSubReg(DstReg, SubRegIdx + I), RegState::Undef);
         if (UseVMV_V_I)
           MIB = MIB.add(DefMBBI->getOperand(2));
         else
@@ -500,9 +500,9 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                            getKillRegState(KillSrc));
         if (UseVMV_V_V) {
           const MCInstrDesc &Desc = DefMBBI->getDesc();
-          MIB.add(DefMBBI->getOperand(RISCVII::getVLOpNum(Desc))); // AVL
+          MIB.add(DefMBBI->getOperand(RISCVII::getVLOpNum(Desc)));  // AVL
           MIB.add(DefMBBI->getOperand(RISCVII::getSEWOpNum(Desc))); // SEW
-          MIB.addImm(0);  // tu, mu
+          MIB.addImm(0);                                            // tu, mu
           MIB.addReg(RISCV::VL, RegState::Implicit);
           MIB.addReg(RISCV::VTYPE, RegState::Implicit);
         }
@@ -527,8 +527,8 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   unsigned Opcode;
   bool IsScalableVector = true;
   if (RISCV::GPRRegClass.hasSubClassEq(RC)) {
-    Opcode = TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ?
-             RISCV::SW : RISCV::SD;
+    Opcode =
+        TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ? RISCV::SW : RISCV::SD;
     IsScalableVector = false;
   } else if (RISCV::GPRPF64RegClass.hasSubClassEq(RC)) {
     Opcode = RISCV::PseudoRV32ZdinxSD;
@@ -610,8 +610,8 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   unsigned Opcode;
   bool IsScalableVector = true;
   if (RISCV::GPRRegClass.hasSubClassEq(RC)) {
-    Opcode = TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ?
-             RISCV::LW : RISCV::LD;
+    Opcode =
+        TRI->getRegSizeInBits(RISCV::GPRRegClass) == 32 ? RISCV::LW : RISCV::LD;
     IsScalableVector = false;
   } else if (RISCV::GPRPF64RegClass.hasSubClassEq(RC)) {
     Opcode = RISCV::PseudoRV32ZdinxLD;
@@ -694,7 +694,7 @@ MachineInstr *RISCVInstrInfo::foldMemoryOperandImpl(
   // Fold load from stack followed by sext.w into lw.
   // TODO: Fold with sext.b, sext.h, zext.b, zext.h, zext.w?
   if (Ops.size() != 1 || Ops[0] != 1)
-   return nullptr;
+    return nullptr;
 
   unsigned LoadOpc;
   switch (MI.getOpcode()) {
@@ -820,35 +820,45 @@ static RISCVCC::CondCode getCondFromBMOVC(unsigned int Opcode) {
   switch (Opcode) {
   default:
     return RISCVCC::COND_INVALID;
-    case RISCV::BMOVC_EQ:
-      return RISCVCC::COND_EQ;
-    case RISCV::BMOVC_NE:
-      return RISCVCC::COND_NE;
-    case RISCV::BMOVC_LT:
-      return RISCVCC::COND_LT;
+  case RISCV::BMOVC_BEQ:
+    return RISCVCC::COND_EQ;
+  case RISCV::BMOVC_BNE:
+    return RISCVCC::COND_NE;
+  case RISCV::BMOVC_BLT:
+    return RISCVCC::COND_LT;
+  case RISCV::BMOVC_BGE:
+    return RISCVCC::COND_GE;
+  case RISCV::BMOVC_BLTU:
+    return RISCVCC::COND_LTU;
+  case RISCV::BMOVC_BGEU:
+    return RISCVCC::COND_GEU;
   }
 }
 
 //***********************************************************************************************************************************************************
-// Parsing BMOV instructions to get target basic block, condition code and operands to insert/reverse a branch
+// Parsing BMOV instructions to get target basic block, condition code and
+// operands to insert/reverse a branch
 //***********************************************************************************************************************************************************
 
-static void parseBMOV(MachineBasicBlock &MBB, MachineBasicBlock *&Target, SmallVectorImpl<MachineOperand> &Cond) {
+static void parseBMOV(MachineBasicBlock &MBB, MachineBasicBlock *&Target,
+                      SmallVectorImpl<MachineOperand> &Cond) {
 
   for (auto &MI : MBB) {
     if (MI.getDesc().getOpcode() == RISCV::BMOVT_J) {
       Target = MI.getOperand(1).getMBB();
-    }
-    else if (MI.getDesc().getOpcode() == RISCV::BMOVC_EQ || MI.getDesc().getOpcode() == RISCV::BMOVC_LT || MI.getDesc().getOpcode() == RISCV::BMOVC_NE) {
+    } else if (MI.getDesc().getOpcode() == RISCV::BMOVC_BEQ ||
+               MI.getDesc().getOpcode() == RISCV::BMOVC_BLT ||
+               MI.getDesc().getOpcode() == RISCV::BMOVC_BNE ||
+               MI.getDesc().getOpcode() == RISCV::BMOVC_BGE ||
+               MI.getDesc().getOpcode() == RISCV::BMOVC_BLTU ||
+               MI.getDesc().getOpcode() == RISCV::BMOVC_BGEU) {
       unsigned CC = getCondFromBMOVC(MI.getDesc().getOpcode());
       Cond.push_back(MachineOperand::CreateImm(CC));
-      Cond.push_back(MI.getOperand(1));
       Cond.push_back(MI.getOperand(2));
+      Cond.push_back(MI.getOperand(3));
     }
   }
 }
-
-
 
 const MCInstrDesc &RISCVInstrInfo::getBrCond(RISCVCC::CondCode CC) const {
   switch (CC) {
@@ -907,15 +917,16 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   for (auto J = I.getReverse(); J != MBB.rend() && isUnpredicatedTerminator(*J);
        J++) {
     NumTerminators++;
-    //std::cout << "Terminator opcode" << J->getDesc().getOpcode() << std::endl;
+    // std::cout << "Terminator opcode" << J->getDesc().getOpcode() <<
+    // std::endl;
     if (J->getDesc().isUnconditionalBranch() ||
         J->getDesc().isIndirectBranch()) {
       FirstUncondOrIndirectBr = J.getReverse();
     }
   }
-  //std::cout << "Terminators = " << NumTerminators << std::endl;
-  // If AllowModify is true, we can erase any terminators after
-  // FirstUncondOrIndirectBR.
+  // std::cout << "Terminators = " << NumTerminators << std::endl;
+  //  If AllowModify is true, we can erase any terminators after
+  //  FirstUncondOrIndirectBR.
   if (AllowModify && FirstUncondOrIndirectBr != MBB.end()) {
     while (std::next(FirstUncondOrIndirectBr) != MBB.end()) {
       std::next(FirstUncondOrIndirectBr)->eraseFromParent();
@@ -936,23 +947,27 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   if (NumTerminators > 2)
     return true;
 
-//***********************************************************************************************************************************************************
-// Handling the two cases where a basic block ends with PB
-// 1. PB is the last instruction in the bb and you parse the it to get True Basic Block (TBB), False Basic Block (FBB) and Condition info
-// 2. PB is the second last instruction followed by an unconditional jump to the FBB (this seems to happen on earlier passes after which jump is eliminated
-//***********************************************************************************************************************************************************
+  //***********************************************************************************************************************************************************
+  // Handling the two cases where a basic block ends with PB
+  // 1. PB is the last instruction in the bb and you parse the it to get True
+  // Basic Block (TBB), False Basic Block (FBB) and Condition info
+  // 2. PB is the second last instruction followed by an unconditional jump to
+  // the FBB (this seems to happen on earlier passes after which jump is
+  // eliminated
+  //***********************************************************************************************************************************************************
 
   if (NumTerminators == 1 && I->getDesc().getOpcode() == RISCV::PB) {
-      parseBMOV(MBB, TBB, Cond);
-      //FBB = getBranchDestBlock(*I);
-      return false;
+    parseBMOV(MBB, TBB, Cond);
+    // FBB = getBranchDestBlock(*I);
+    return false;
   }
 
-  if ((NumTerminators == 2 && std::prev(I)->getDesc().getOpcode() == RISCV::PB &&
-    I->getDesc().isUnconditionalBranch())) {
-      parseBMOV(MBB, TBB, Cond);
-      FBB = getBranchDestBlock(*I);
-      return false;
+  if ((NumTerminators == 2 &&
+       std::prev(I)->getDesc().getOpcode() == RISCV::PB &&
+       I->getDesc().isUnconditionalBranch())) {
+    parseBMOV(MBB, TBB, Cond);
+    FBB = getBranchDestBlock(*I);
+    return false;
   }
 
   // Handle a single unconditional branch.
@@ -967,11 +982,9 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     return false;
   }
 
-
-
   // Handle a conditional branch followed by an unconditional branch.
   if (NumTerminators == 2 && std::prev(I)->getDesc().isConditionalBranch() &&
-      I->getDesc().isUnconditionalBranch()) { 
+      I->getDesc().isUnconditionalBranch()) {
     parseCondBranch(*std::prev(I), TBB, Cond);
     FBB = getBranchDestBlock(*I);
     return false;
@@ -982,55 +995,34 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 }
 
 //***********************************************************************************************************************************************************
-// Removing all the BMOV instructions(PB, BMOVS, BMOVT, BMOVC). Makes sure the instructions are matched according to the index.
+// Removing all the BMOV instructions(PB, BMOVS, BMOVT, BMOVC). Makes sure the
+// instructions are matched according to the index.
 //***********************************************************************************************************************************************************
 
 void removeBMOV(MachineBasicBlock &MBB, int index) {
-    std::vector<Register> cc_op;
-    unsigned int bmovc_type;
-    for (auto I = MBB.begin(); I != MBB.end(); ) {
-      auto &Instr = *I;
-      if((Instr.getDesc().getOpcode() == RISCV::PB || Instr.getDesc().getOpcode() == RISCV::BMOVT_J || Instr.getDesc().getOpcode() == RISCV::BMOVS_J) && Instr.getBMOVIndex() == index) {
-        auto nI = std::next(I);
-        Instr.eraseFromParent();
-        I = nI;
-        //std::cout << "Hi\n";
-      }
-      else if ((Instr.getDesc().getOpcode() == RISCV::BMOVC_EQ || Instr.getDesc().getOpcode() == RISCV::BMOVC_NE || Instr.getDesc().getOpcode() == RISCV::BMOVC_LT) && Instr.getBMOVIndex() == index) {
-        cc_op.push_back(Instr.getOperand(1).getReg());
-        cc_op.push_back(Instr.getOperand(2).getReg());
-        bmovc_type = Instr.getDesc().getOpcode();
-        auto nI = std::next(I);
-        Instr.eraseFromParent();
-        I = nI;
-      }
-      else if (!cc_op.empty() && (bmovc_type == RISCV::BMOVC_EQ || bmovc_type == RISCV::BMOVC_NE || bmovc_type == RISCV::BMOVC_LT) && (Instr.getDesc().getOpcode() == RISCV::SUB && Instr.getBMOVIndex() == index)) {
-        auto nI = std::next(I);
-        Instr.eraseFromParent();
-        I = nI;       
-      }
-      else if (!cc_op.empty() && bmovc_type == RISCV::BMOVC_EQ && (Instr.getDesc().getOpcode() == RISCV::SLTIU && Instr.getBMOVIndex() == index)) {
-        auto nI = std::next(I);
-        Instr.eraseFromParent();
-        I = nI;       
-      }
-      else if (!cc_op.empty() && bmovc_type == RISCV::BMOVC_LT && (Instr.getDesc().getOpcode() == RISCV::SLTI && Instr.getBMOVIndex() == index)) {
-        auto nI = std::next(I);
-        Instr.eraseFromParent();
-        I = nI;       
-      }
-      else if (!cc_op.empty() && bmovc_type == RISCV::BMOVC_NE && (Instr.getDesc().getOpcode() == RISCV::SLTIU && Instr.getBMOVIndex() == index)) {
-        auto nI = std::next(I);
-        Instr.eraseFromParent();
-        I = nI;       
-      }      
-      else {
-        I++;
-      }
+  for (auto I = MBB.begin(); I != MBB.end();) {
+    auto &Instr = *I;
+    if ((Instr.getDesc().getOpcode() == RISCV::PB ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVT_J ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVS_J ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVC_BNE ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVC_BEQ ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVC_BLT ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVC_BGE ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVC_BLTU ||
+         Instr.getDesc().getOpcode() == RISCV::BMOVC_BGEU) &&
+        Instr.getBMOVIndex() == index) {
+      auto nI = std::next(I);
+      Instr.eraseFromParent();
+      I = nI;
+      // std::cout << "Hi\n";
+    } else {
+      I++;
     }
+  }
 }
 
-unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB, 
+unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                       int *BytesRemoved) const {
   if (BytesRemoved)
     *BytesRemoved = 0;
@@ -1038,7 +1030,7 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (I == MBB.end())
     return 0;
   if ((!I->getDesc().isUnconditionalBranch() &&
-      !I->getDesc().isConditionalBranch()))
+       !I->getDesc().isConditionalBranch()))
     return 0;
 
   // Remove the branch.
@@ -1049,16 +1041,15 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (BytesRemoved) {
     if (I->getDesc().getOpcode() == RISCV::PB)
       *BytesRemoved += 32;
-    else 
+    else
       *BytesRemoved += getInstSizeInBytes(*I);
   }
-  
+
   if (I->getDesc().getOpcode() == RISCV::PB) {
     int index = I->getBMOVIndex();
     bmov_index_vector.push_back(index);
     removeBMOV(MBB, index);
-  }
-  else {
+  } else {
     I->eraseFromParent();
   }
   I = MBB.end();
@@ -1066,7 +1057,8 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (I == MBB.begin())
     return 1;
   --I;
-  if (!I->getDesc().isConditionalBranch())// || I->getDesc().getOpcode() == RISCV::PB)
+  if (!I->getDesc()
+           .isConditionalBranch()) // || I->getDesc().getOpcode() == RISCV::PB)
     return 1;
 
   // Remove the branch.
@@ -1077,106 +1069,77 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   if (BytesRemoved) {
     if (I->getDesc().getOpcode() == RISCV::PB)
       *BytesRemoved += 32;
-    else 
+    else
       *BytesRemoved += getInstSizeInBytes(*I);
   }
-  
+
   if (I->getDesc().getOpcode() == RISCV::PB) {
     int index = I->getBMOVIndex();
     bmov_index_vector.push_back(index);
     removeBMOV(MBB, index);
-  }
-  else 
+  } else
     I->eraseFromParent();
   return 2;
 }
 
 //***********************************************************************************************************************************************************
-// Inserting BMOVs. This uses the bmov_index_vector to pop out the indexes that were removed and then reuse them. Insertion similar to backend pass
+// Inserting BMOVs. This uses the bmov_index_vector to pop out the indexes that
+// were removed and then reuse them. Insertion similar to backend pass
 //***********************************************************************************************************************************************************
 
-void insertBMOV(MachineBasicBlock &MBB, MachineBasicBlock *TBB, const DebugLoc &DL, ArrayRef<MachineOperand> Cond) {
+void insertBMOV(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
+                const DebugLoc &DL, ArrayRef<MachineOperand> Cond) {
   MachineFunction *MF = MBB.getParent();
   const auto &STI = MF->getSubtarget<RISCVSubtarget>();
   const RISCVInstrInfo *TII = STI.getInstrInfo();
-  auto cc = static_cast<RISCVCC::CondCode>(Cond[0].getImm());        
-  
+  auto cc = static_cast<RISCVCC::CondCode>(Cond[0].getImm());
+
   int index = bmov_index_vector.back();
   bmov_index_vector.pop_back();
   BuildMI(&MBB, DL, TII->get(RISCV::BMOVT_J))
-          .addReg(Register(RISCV::BT0 + index), RegState::Define)
-          .addMBB(TBB);
+      .addReg(Register(RISCV::BT0 + index), RegState::Define)
+      .addMBB(TBB);
 
   BuildMI(&MBB, DL, TII->get(RISCV::BMOVS_J))
-          .addReg(Register(RISCV::BS0 + index), RegState::Define)
-          .addMBB(TBB);
-        
-  if (cc == RISCVCC::COND_NE) {
-    BuildMI(&MBB, DL, TII->get(RISCV::SUB))
-            .addReg(Cond[2].getReg(), RegState::Define)
-            .addReg(Cond[1].getReg())
-            .addReg(Cond[2].getReg()); 
+      .addReg(Register(RISCV::BS0 + index), RegState::Define)
+      .addMBB(TBB);
 
-    BuildMI(&MBB, DL, TII->get(RISCV::SLTIU))
-            .addReg(Cond[1].getReg(), RegState::Define)
-            .addReg(RISCV::X0)
-            .addReg(Cond[2].getReg());
+  unsigned int BMOVOpcode = RISCV::BMOVC_BNE; // Default, can delete later
 
-    BuildMI(&MBB, DL, TII->get(RISCV::BMOVC_NE))
-            .addReg(Register(RISCV::BC0 + index), RegState::Define)
-            .addReg(Cond[1].getReg())
-            .addReg(Cond[2].getReg());
-
-    BuildMI(&MBB, DL, TII->get(RISCV::PB))
-              //.addReg(DestReg_BPR_T, RegState::Define)
-            .addReg(Register(RISCV::BC0 + index))
-            .addReg(Register(RISCV::BS0 + index))
-            .addReg(Register(RISCV::BT0 + index));
+  switch (cc) {
+  case RISCVCC::COND_NE:
+    BMOVOpcode = RISCV::BMOVC_BNE;
+    break;
+  case RISCVCC::COND_EQ:
+    BMOVOpcode = RISCV::BMOVC_BEQ;
+    break;
+  case RISCVCC::COND_LT:
+    BMOVOpcode = RISCV::BMOVC_BLT;
+    break;
+  case RISCVCC::COND_GE:
+    BMOVOpcode = RISCV::BMOVC_BGE;
+    break;
+  case RISCVCC::COND_LTU:
+    BMOVOpcode = RISCV::BMOVC_BLTU;
+    break;
+  case RISCVCC::COND_GEU:
+    BMOVOpcode = RISCV::BMOVC_BGEU;
+    break;
+  default:
+    outs() << "Unknown branch opcode!";
+    break;
   }
-  else if (cc == RISCVCC::COND_EQ) {
-    BuildMI(&MBB, DL, TII->get(RISCV::SUB))
-            .addReg(Cond[2].getReg(), RegState::Define)
-            .addReg(Cond[1].getReg())
-            .addReg(Cond[2].getReg()); 
 
-    BuildMI(&MBB, DL, TII->get(RISCV::SLTIU))
-            .addReg(Cond[1].getReg(), RegState::Define)
-            .addReg(Cond[2].getReg())
-            .addImm(0x1);
+  BuildMI(&MBB, DL, TII->get(BMOVOpcode))
+      .addReg(Register(RISCV::BC0 + index), RegState::Define)
+      .addReg(Cond[1].getReg())
+      .addReg(Cond[2].getReg());
 
-    BuildMI(&MBB, DL, TII->get(RISCV::BMOVC_EQ))
-            .addReg(Register(RISCV::BC0 + index), RegState::Define)
-            .addReg(Cond[1].getReg())
-            .addReg(Cond[2].getReg());
-
-    BuildMI(&MBB, DL, TII->get(RISCV::PB))
-              //.addReg(DestReg_BPR_T, RegState::Define)
-            .addReg(Register(RISCV::BC0 + index))
-            .addReg(Register(RISCV::BS0 + index))
-            .addReg(Register(RISCV::BT0 + index));
-  }
-  else if (cc == RISCVCC::COND_LT) {
-    BuildMI(&MBB, DL, TII->get(RISCV::SUB))
-            .addReg(Cond[2].getReg(), RegState::Define)
-            .addReg(Cond[1].getReg())
-            .addReg(Cond[2].getReg());  
-
-    BuildMI(&MBB, DL, TII->get(RISCV::SLTI))
-            .addReg(Cond[1].getReg(), RegState::Define)
-            .addReg(Cond[2].getReg())
-            .addImm(0x0);
-
-    BuildMI(&MBB, DL, TII->get(RISCV::BMOVC_LT))
-            .addReg(Register(RISCV::BC0 + index), RegState::Define)
-            .addReg(Cond[1].getReg())
-            .addReg(Cond[2].getReg());
-
-    BuildMI(&MBB, DL, TII->get(RISCV::PB))
-            .addReg(Register(RISCV::BC0 + index))
-            .addReg(Register(RISCV::BS0 + index))
-            .addReg(Register(RISCV::BT0 + index));
-                      
-    }
+  BuildMI(&MBB, DL, TII->get(RISCV::PB))
+      //.addReg(DestReg_BPR_T, RegState::Define)
+      .addReg(Register(RISCV::BC0 + index))
+      .addReg(Register(RISCV::BS0 + index))
+      .addReg(Register(RISCV::BT0 + index));
 }
 
 // Inserts a branch into the end of the specific MachineBasicBlock, returning
@@ -1200,15 +1163,15 @@ unsigned RISCVInstrInfo::insertBranch(
     return 1;
   }
 
-
-  //return 0;
-  // Either a one or two-way conditional branch.
+  // return 0;
+  //  Either a one or two-way conditional branch.
   /*auto CC = static_cast<RISCVCC::CondCode>(Cond[0].getImm());
   MachineInstr &CondMI =
       *BuildMI(&MBB, DL, getBrCond(CC)).add(Cond[1]).add(Cond[2]).addMBB(TBB);
   if (BytesAdded)
     *BytesAdded += getInstSizeInBytes(CondMI);
-  std::cout << "ADDING A BRANCH*******************************************" << CondMI.getOpcode() << std::endl;
+  std::cout << "ADDING A BRANCH*******************************************" <<
+  CondMI.getOpcode() << std::endl;
   // One-way conditional branch.
   if (!FBB)
     return 1;
@@ -1216,8 +1179,9 @@ unsigned RISCVInstrInfo::insertBranch(
   insertBMOV(MBB, TBB, DL, Cond);
   if (BytesAdded)
     *BytesAdded += 32;
-  //std::cout << "ADDING A BRANCH*******************************************" << CondMI.getOpcode() << std::endl;
-  // One-way conditional branch.
+  // std::cout << "ADDING A BRANCH*******************************************"
+  // << CondMI.getOpcode() << std::endl;
+  //  One-way conditional branch.
   if (!FBB)
     return 1;
   // Two-way conditional branch.
@@ -1337,33 +1301,81 @@ bool RISCVInstrInfo::isBranchOffsetInRange(unsigned BranchOp,
 // TODO: Support more operations.
 unsigned getPredicatedOpcode(unsigned Opcode) {
   switch (Opcode) {
-  case RISCV::ADD:   return RISCV::PseudoCCADD;   break;
-  case RISCV::SUB:   return RISCV::PseudoCCSUB;   break;
-  case RISCV::SLL:   return RISCV::PseudoCCSLL;   break;
-  case RISCV::SRL:   return RISCV::PseudoCCSRL;   break;
-  case RISCV::SRA:   return RISCV::PseudoCCSRA;   break;
-  case RISCV::AND:   return RISCV::PseudoCCAND;   break;
-  case RISCV::OR:    return RISCV::PseudoCCOR;    break;
-  case RISCV::XOR:   return RISCV::PseudoCCXOR;   break;
+  case RISCV::ADD:
+    return RISCV::PseudoCCADD;
+    break;
+  case RISCV::SUB:
+    return RISCV::PseudoCCSUB;
+    break;
+  case RISCV::SLL:
+    return RISCV::PseudoCCSLL;
+    break;
+  case RISCV::SRL:
+    return RISCV::PseudoCCSRL;
+    break;
+  case RISCV::SRA:
+    return RISCV::PseudoCCSRA;
+    break;
+  case RISCV::AND:
+    return RISCV::PseudoCCAND;
+    break;
+  case RISCV::OR:
+    return RISCV::PseudoCCOR;
+    break;
+  case RISCV::XOR:
+    return RISCV::PseudoCCXOR;
+    break;
 
-  case RISCV::ADDI:  return RISCV::PseudoCCADDI;  break;
-  case RISCV::SLLI:  return RISCV::PseudoCCSLLI;  break;
-  case RISCV::SRLI:  return RISCV::PseudoCCSRLI;  break;
-  case RISCV::SRAI:  return RISCV::PseudoCCSRAI;  break;
-  case RISCV::ANDI:  return RISCV::PseudoCCANDI;  break;
-  case RISCV::ORI:   return RISCV::PseudoCCORI;   break;
-  case RISCV::XORI:  return RISCV::PseudoCCXORI;  break;
+  case RISCV::ADDI:
+    return RISCV::PseudoCCADDI;
+    break;
+  case RISCV::SLLI:
+    return RISCV::PseudoCCSLLI;
+    break;
+  case RISCV::SRLI:
+    return RISCV::PseudoCCSRLI;
+    break;
+  case RISCV::SRAI:
+    return RISCV::PseudoCCSRAI;
+    break;
+  case RISCV::ANDI:
+    return RISCV::PseudoCCANDI;
+    break;
+  case RISCV::ORI:
+    return RISCV::PseudoCCORI;
+    break;
+  case RISCV::XORI:
+    return RISCV::PseudoCCXORI;
+    break;
 
-  case RISCV::ADDW:  return RISCV::PseudoCCADDW;  break;
-  case RISCV::SUBW:  return RISCV::PseudoCCSUBW;  break;
-  case RISCV::SLLW:  return RISCV::PseudoCCSLLW;  break;
-  case RISCV::SRLW:  return RISCV::PseudoCCSRLW;  break;
-  case RISCV::SRAW:  return RISCV::PseudoCCSRAW;  break;
+  case RISCV::ADDW:
+    return RISCV::PseudoCCADDW;
+    break;
+  case RISCV::SUBW:
+    return RISCV::PseudoCCSUBW;
+    break;
+  case RISCV::SLLW:
+    return RISCV::PseudoCCSLLW;
+    break;
+  case RISCV::SRLW:
+    return RISCV::PseudoCCSRLW;
+    break;
+  case RISCV::SRAW:
+    return RISCV::PseudoCCSRAW;
+    break;
 
-  case RISCV::ADDIW: return RISCV::PseudoCCADDIW; break;
-  case RISCV::SLLIW: return RISCV::PseudoCCSLLIW; break;
-  case RISCV::SRLIW: return RISCV::PseudoCCSRLIW; break;
-  case RISCV::SRAIW: return RISCV::PseudoCCSRAIW; break;
+  case RISCV::ADDIW:
+    return RISCV::PseudoCCADDIW;
+    break;
+  case RISCV::SLLIW:
+    return RISCV::PseudoCCSLLIW;
+    break;
+  case RISCV::SRLIW:
+    return RISCV::PseudoCCSRLIW;
+    break;
+  case RISCV::SRAIW:
+    return RISCV::PseudoCCSRAIW;
+    break;
   }
 
   return RISCV::INSTRUCTION_LIST_END;
@@ -1690,7 +1702,7 @@ static bool isFMUL(unsigned Opc) {
 
 bool RISCVInstrInfo::hasReassociableSibling(const MachineInstr &Inst,
                                             bool &Commuted) const {
-                                  
+
   if (!TargetInstrInfo::hasReassociableSibling(Inst, Commuted))
     return false;
   const MachineRegisterInfo &MRI = Inst.getMF()->getRegInfo();
@@ -2075,12 +2087,13 @@ bool RISCVInstrInfo::verifyInstruction(const MachineInstr &MI,
   const uint64_t TSFlags = Desc.TSFlags;
   if (RISCVII::hasVLOp(TSFlags)) {
     const MachineOperand &Op = MI.getOperand(RISCVII::getVLOpNum(Desc));
-    if (!Op.isImm() && !Op.isReg())  {
+    if (!Op.isImm() && !Op.isReg()) {
       ErrInfo = "Invalid operand type for VL operand";
       return false;
     }
     if (Op.isReg() && Op.getReg() != RISCV::NoRegister) {
-      const MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
+      const MachineRegisterInfo &MRI =
+          MI.getParent()->getParent()->getRegInfo();
       auto *RC = MRI.getRegClass(Op.getReg());
       if (!RISCV::GPRRegClass.hasSubClassEq(RC)) {
         ErrInfo = "Invalid register class for VL operand";
@@ -2242,9 +2255,7 @@ bool RISCVInstrInfo::isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
 }
 
 // Enum values indicating how an outlined call should be constructed.
-enum MachineOutlinerConstructionID {
-  MachineOutlinerDefault
-};
+enum MachineOutlinerConstructionID { MachineOutlinerDefault };
 
 bool RISCVInstrInfo::shouldOutlineFromFunctionByDefault(
     MachineFunction &MF) const {
@@ -2294,7 +2305,7 @@ RISCVInstrInfo::getOutliningCandidateInfo(
 
 outliner::InstrType
 RISCVInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
-                                 unsigned Flags) const {
+                                     unsigned Flags) const {
   MachineInstr &MI = *MBBI;
   MachineBasicBlock *MBB = MI.getParent();
   const TargetRegisterInfo *TRI =
@@ -2357,9 +2368,9 @@ void RISCVInstrInfo::buildOutlinedFrame(
 
   // Add in a return instruction to the end of the outlined frame.
   MBB.insert(MBB.end(), BuildMI(MF, DebugLoc(), get(RISCV::JALR))
-      .addReg(RISCV::X0, RegState::Define)
-      .addReg(RISCV::X5)
-      .addImm(0));
+                            .addReg(RISCV::X0, RegState::Define)
+                            .addReg(RISCV::X5)
+                            .addImm(0));
 }
 
 MachineBasicBlock::iterator RISCVInstrInfo::insertOutlinedCall(
@@ -2663,8 +2674,8 @@ MachineInstr *RISCVInstrInfo::commuteInstructionImpl(MachineInstr &MI,
     assert((OpIdx1 == 3 || OpIdx2 == 3) && "Unexpected opcode index");
     unsigned Opc;
     switch (MI.getOpcode()) {
-      default:
-        llvm_unreachable("Unexpected opcode");
+    default:
+      llvm_unreachable("Unexpected opcode");
       CASE_VFMA_CHANGE_OPCODE_SPLATS(FMACC, FMADD)
       CASE_VFMA_CHANGE_OPCODE_SPLATS(FMADD, FMACC)
       CASE_VFMA_CHANGE_OPCODE_SPLATS(FMSAC, FMSUB)
@@ -2702,8 +2713,8 @@ MachineInstr *RISCVInstrInfo::commuteInstructionImpl(MachineInstr &MI,
     if (OpIdx1 == 3 || OpIdx2 == 3) {
       unsigned Opc;
       switch (MI.getOpcode()) {
-        default:
-          llvm_unreachable("Unexpected opcode");
+      default:
+        llvm_unreachable("Unexpected opcode");
         CASE_VFMA_CHANGE_OPCODE_LMULS_MF4(FMADD, FMACC, VV)
         CASE_VFMA_CHANGE_OPCODE_LMULS_MF4(FMSUB, FMSAC, VV)
         CASE_VFMA_CHANGE_OPCODE_LMULS_MF4(FNMADD, FNMACC, VV)
@@ -2753,7 +2764,7 @@ MachineInstr *RISCVInstrInfo::commuteInstructionImpl(MachineInstr &MI,
     NewOpc = RISCV::PseudoV##OP##_##LMUL;                                      \
     break;
 
-#define CASE_WIDEOP_CHANGE_OPCODE_LMULS_MF4(OP)                                 \
+#define CASE_WIDEOP_CHANGE_OPCODE_LMULS_MF4(OP)                                \
   CASE_WIDEOP_CHANGE_OPCODE_COMMON(OP, MF4)                                    \
   CASE_WIDEOP_CHANGE_OPCODE_COMMON(OP, MF2)                                    \
   CASE_WIDEOP_CHANGE_OPCODE_COMMON(OP, M1)                                     \

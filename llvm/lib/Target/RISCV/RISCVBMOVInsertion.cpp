@@ -1,21 +1,20 @@
 #include "RISCV.h"
 #include "RISCVInstrInfo.h"
+#include "RISCVSubtarget.h"
+#include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/TargetRegisterInfo.h"
-#include "RISCVSubtarget.h"
 #include "llvm/MC/MCSymbol.h"
-#include "llvm/CodeGen/AsmPrinter.h"
 using namespace llvm;
 
-
 //*******************************************************************************************************************************************
-// This is a LLVM backend pass that right now looks for conditional branches, turns them into BMOV instructions and later deletes the 
-// branch. The BMOVC has two GPR operands which are the original operands used in the conditional branch it's replacing
+// This is a LLVM backend pass that right now looks for conditional branches,
+// turns them into BMOV instructions and later deletes the branch. The BMOVC has
+// two GPR operands which are the original operands used in the conditional
+// branch it's replacing
 //*******************************************************************************************************************************************
-#define RISCV_BMOV_INSERTION_PASS_NAME                                   \
-  "RISCV bmov insertion pass"
-
+#define RISCV_BMOV_INSERTION_PASS_NAME "RISCV bmov insertion pass"
 
 namespace {
 
@@ -38,136 +37,147 @@ char RISCVBMOVInsertion::ID = 0;
 
 bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
 
-  for(auto &MBB : MF) {
-    //outs() << "Entering MBB\n";
-    for (auto I = MBB.begin(); I != MBB.end();) {
+  for (auto &MBB : MF) {
+    // outs() << "Entering MBB\n";
+    for (auto I = MBB.rbegin(); I != MBB.rend();) {
       auto &MI = *I;
-      if (MI.isConditionalBranch()) {  // Is the instruction a bne/beq/blt
+      //      outs() << MI;
+      if (MI.isConditionalBranch()) { // Is the instruction a bne/beq/blt
+        auto nI = std::next(I);
         const auto &STI = MF.getSubtarget<RISCVSubtarget>();
         const RISCVInstrInfo *TII = STI.getInstrInfo();
-        Register DestReg_BPR_T = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
-        Register DestReg_BPR_S = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
-        Register DestReg_BPR_C = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
+        Register DestReg_BPR_T =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
+        Register DestReg_BPR_S =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
+        Register DestReg_BPR_C =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
         DebugLoc DL;
         MachineInstrBuilder MIB;
-        MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
-            .addReg(DestReg_BPR_T, RegState::Define)
-            .addMBB(MI.getOperand(2).getMBB());
-        MIB.getInstr()->setBMOVIndex(bmov_index); 
+        MachineInstrBuilder SourceMIB;
+        MIB =
+            BuildMI(
+                MBB, MI, DL,
+                TII->get(
+                    RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
+                .addReg(DestReg_BPR_T, RegState::Define)
+                .addMBB(MI.getOperand(2).getMBB());
+        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVS_J)) // This currently takes in the target label, but it should take the source label eventually.
-            .addReg(DestReg_BPR_S, RegState::Define)
-            .addMBB(MI.getOperand(2).getMBB());
-        MIB.getInstr()->setBMOVIndex(bmov_index); 
-        
-        if (MI.getOpcode() == RISCV::BNE) {
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::SUB))
-              .addReg(MI.getOperand(1).getReg(), RegState::Define)
-              .addReg(MI.getOperand(0).getReg())
-              .addReg(MI.getOperand(1).getReg());
-          MIB.getInstr()->setBMOVIndex(bmov_index);  
+        SourceMIB = BuildMI(
+                  MBB, MI, DL,
+                  TII->get(RISCV::BMOVS_J)) // This currently takes in the
+                                            // target label, but it should take
+                                            // the source label eventually.
+                  .addReg(DestReg_BPR_S, RegState::Define);
+        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::SLTIU))
-              .addReg(MI.getOperand(0).getReg(), RegState::Define)
-              .addReg(RISCV::X0)
-              .addReg(MI.getOperand(1).getReg());
-          MIB.getInstr()->setBMOVIndex(bmov_index);
+        unsigned int BMOVOpcode = RISCV::BMOVC_BNE; // Default, can delete later
 
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVC_NE))
-              .addReg(DestReg_BPR_C, RegState::Define)
-              .addReg(MI.getOperand(0).getReg())
-              .addReg(MI.getOperand(1).getReg());
-          MIB.getInstr()->setBMOVIndex(bmov_index); 
-        }
-        else if (MI.getOpcode() == RISCV::BEQ) {
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::SUB))
-              .addReg(MI.getOperand(1).getReg(), RegState::Define)
-              .addReg(MI.getOperand(0).getReg())
-              .addReg(MI.getOperand(1).getReg());
-          MIB.getInstr()->setBMOVIndex(bmov_index); 
-
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::SLTIU))
-              .addReg(MI.getOperand(0).getReg(), RegState::Define)
-              .addReg(MI.getOperand(1).getReg())
-              .addImm(0x1);
-          MIB.getInstr()->setBMOVIndex(bmov_index); 
-
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVC_EQ))
-              .addReg(DestReg_BPR_C, RegState::Define)
-              .addReg(MI.getOperand(0).getReg())
-              .addReg(MI.getOperand(1).getReg());
-          MIB.getInstr()->setBMOVIndex(bmov_index); 
-        }        
-        else if (MI.getOpcode() == RISCV::BLT) {
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::SUB))
-              .addReg(MI.getOperand(1).getReg(), RegState::Define)
-              .addReg(MI.getOperand(0).getReg())
-              .addReg(MI.getOperand(1).getReg()); 
-          MIB.getInstr()->setBMOVIndex(bmov_index);
-
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::SLTI))
-              .addReg(MI.getOperand(0).getReg(), RegState::Define)
-              .addReg(MI.getOperand(1).getReg())
-              .addImm(0x0);
-          MIB.getInstr()->setBMOVIndex(bmov_index);
-
-          MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVC_LT))
-              .addReg(DestReg_BPR_C, RegState::Define)
-              .addReg(MI.getOperand(0).getReg())
-              .addReg(MI.getOperand(1).getReg());
-          MIB.getInstr()->setBMOVIndex(bmov_index); 
+        switch (MI.getOpcode()) {
+          case RISCV::BNE:
+            BMOVOpcode = RISCV::BMOVC_BNE;
+            break;
+          case RISCV::BEQ:
+            BMOVOpcode = RISCV::BMOVC_BEQ;
+            break;
+          case RISCV::BLT:
+            BMOVOpcode = RISCV::BMOVC_BLT;
+            break;
+          case RISCV::BGE:
+            BMOVOpcode = RISCV::BMOVC_BGE;
+            break;
+          case RISCV::BLTU:
+            BMOVOpcode = RISCV::BMOVC_BLTU;
+            break;
+          case RISCV::BGEU:
+            BMOVOpcode = RISCV::BMOVC_BGEU;
+            break;
+          default:
+            outs() << "Unknown branch opcode!";
+            break;
         }
 
-        MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::PB))
-              //.addReg(DestReg_BPR_T, RegState::Define)
-              .addReg(DestReg_BPR_C)
-              .addReg(DestReg_BPR_S)
-              .addReg(DestReg_BPR_T);
-        MIB.getInstr()->setBMOVIndex(bmov_index); 
+        MIB = BuildMI(MBB, MI, DL, TII->get(BMOVOpcode))
+                  .addReg(DestReg_BPR_C, RegState::Define)
+                  .addReg(MI.getOperand(0).getReg())
+                  .addReg(MI.getOperand(1).getReg());
+        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        auto nI = std::next(I);
+        auto PB_MBB = MBB.splitAt(MBB.back());
+
+        MIB = BuildMI(*PB_MBB, PB_MBB->end(), DL, TII->get(RISCV::PB))
+                  .addReg(DestReg_BPR_S)
+                  .addReg(DestReg_BPR_T)
+                  .addReg(DestReg_BPR_C);
+        MIB.getInstr()->setBMOVIndex(bmov_index);
+        SourceMIB.addMBB(PB_MBB);
+
         MI.eraseFromBundle();
         I = nI;
-        bmov_index++;            
-        //break;
-      }
-      /*else if (MI.isUnconditionalBranch()) {
-        std::cout << "Unconditional branch " << MI.getOpcode() << std::endl;
+        bmov_index++;
+        // break;
+      } else if (MI.isUnconditionalBranch()) {
+        auto nI = std::next(I);
         const auto &STI = MF.getSubtarget<RISCVSubtarget>();
-        const RISCVInstrInfo *TII = STI.getInstrInfo();
-        Register DestReg_BPR_T = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
-        Register DestReg_BPR_S = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
-        Register DestReg_BPR_C = MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
         DebugLoc DL;
+        const RISCVInstrInfo *TII = STI.getInstrInfo();
+
+        Register DestReg_BPR_T =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
+        Register DestReg_BPR_S =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
+        Register DestReg_BPR_C =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
         MachineInstrBuilder MIB;
 
-        MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
-            .addReg(DestReg_BPR_T, RegState::Define)
-            .addMBB(MI.getOperand(0).getMBB());
-        MIB.getInstr()->setBMOVIndex(bmov_index); 
+        MIB =
+            BuildMI(
+                MBB, MI, DL,
+                TII->get(
+                    RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
+                .addReg(DestReg_BPR_T, RegState::Define)
+                .addMBB(MI.getOperand(2).getMBB());
+        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVS_J)) // This currently takes in the target label, but it should take the source label eventually.
-            .addReg(DestReg_BPR_S, RegState::Define)
-            .addMBB(MI.getOperand(0).getMBB());
-        MIB.getInstr()->setBMOVIndex(bmov_index); 
+        MIB = BuildMI(
+                  MBB, MI, DL,
+                  TII->get(RISCV::BMOVS_J)) // This currently takes in the
+                                            // target label, but it should take
+                                            // the source label eventually.
+                  .addReg(DestReg_BPR_S, RegState::Define)
+                  .addMBB(MI.getParent());
+        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        MIB = BuildMI(MBB, MI ,DL, TII->get(RISCV::BMOVUC))
-              .addReg(DestReg_BPR_C, RegState::Define)
-              .addReg(RISCV::X0)
-              .addReg(RISCV::X0);
-        MIB.getInstr()->setBMOVIndex(bmov_index); 
+        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVUC))
+                  .addReg(DestReg_BPR_C, RegState::Define);
+        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        auto nI = std::next(I);
-        MI.eraseFromBundle();
-        I = nI;
-        bmov_index++;       
-      }*/
-      else {
-        I++;
+        switch (MI.getOpcode()) {
+        case RISCV::JAL:
+          MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
+                  .addReg(MI.getOperand(0).getReg())
+                  .addReg(DestReg_BPR_S)
+                  .addReg(DestReg_BPR_C)
+                  .addReg(DestReg_BPR_T);
+          break;
+        case RISCV::JALR:
+                  MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
+                  .addReg(MI.getOperand(0).getReg())
+                  .addReg(DestReg_BPR_S)
+                  .addReg(DestReg_BPR_C)
+                  .addReg(DestReg_BPR_T);
+          break;
+        default:
+          outs() << "Unknown branch opcode!";
+          break;
+        }
+      } else {
+        I = std::next(I);
       }
     }
-    //outs() << "Contents of MachineBasicBlock:\n";
-    //outs() << MBB << "\n";
+    // outs() << "Contents of MachineBasicBlock:\n";
+    // outs() << MBB << "\n";
   }
 
   return true;

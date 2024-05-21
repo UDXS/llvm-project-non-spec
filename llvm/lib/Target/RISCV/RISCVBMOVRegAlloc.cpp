@@ -46,7 +46,7 @@ bool RISCVBMOVRegAlloc::runOnMachineFunction(MachineFunction &MF) {
       else if (MI.getOpcode() == RISCV::BMOVS_J) {  
         MI.getOperand(0).setReg(Register(RISCV::BS0 + MI.getBMOVIndex()));
       }
-      else if (MI.getOpcode() == RISCV::BMOVC_NE || MI.getOpcode() == RISCV::BMOVC_EQ || MI.getOpcode() == RISCV::BMOVC_LT) {  
+      else if (MI.getOpcode() == RISCV::BMOVC_BNE || MI.getOpcode() == RISCV::BMOVC_BEQ || MI.getOpcode() == RISCV::BMOVC_BLT || MI.getOpcode() == RISCV::BMOVC_BGE || MI.getOpcode() == RISCV::BMOVC_BLTU|| MI.getOpcode() == RISCV::BMOVC_BGEU) {
         MI.getOperand(0).setReg(Register(RISCV::BC0 + MI.getBMOVIndex()));
       }
       else if (MI.getOpcode() == RISCV::PB) {  
