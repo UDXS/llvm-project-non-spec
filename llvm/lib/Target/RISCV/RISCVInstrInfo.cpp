@@ -842,7 +842,6 @@ static RISCVCC::CondCode getCondFromBMOVC(unsigned int Opcode) {
 
 static void parseBMOV(MachineBasicBlock &MBB, MachineBasicBlock *&Target,
                       SmallVectorImpl<MachineOperand> &Cond) {
-
   for (auto &MI : MBB) {
     if (MI.getDesc().getOpcode() == RISCV::BMOVT_J) {
       Target = MI.getOperand(1).getMBB();
@@ -1096,6 +1095,7 @@ void insertBMOV(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
 
   int index = bmov_index_vector.back();
   bmov_index_vector.pop_back();
+  outs() << "Here we insert BMOV\n";
   BuildMI(&MBB, DL, TII->get(RISCV::BMOVT_J))
       .addReg(Register(RISCV::BT0 + index), RegState::Define)
       .addMBB(TBB);

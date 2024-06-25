@@ -37,8 +37,10 @@ char RISCVBMOVInsertion::ID = 0;
 
 bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
 
-  for (auto &MBB : MF) {
-    // outs() << "Entering MBB\n";
+  for (auto BB = MF.rbegin(); BB != MF.rend();) {
+    outs() << "Entering MBB\n";
+    auto nBB = std::next(BB);
+    auto &MBB = *BB;
     for (auto I = MBB.rbegin(); I != MBB.rend();) {
       auto &MI = *I;
       //      outs() << MI;
@@ -98,15 +100,21 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
             break;
         }
 
+
         MIB = BuildMI(MBB, MI, DL, TII->get(BMOVOpcode))
                   .addReg(DestReg_BPR_C, RegState::Define)
                   .addReg(MI.getOperand(0).getReg())
                   .addReg(MI.getOperand(1).getReg());
         MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        auto PB_MBB = MBB.splitAt(MBB.back());
+        auto PB_MBB = MBB.splitAt(MI);
+        PB_MBB->setLabelMustBeEmitted();
 
-        MIB = BuildMI(*PB_MBB, PB_MBB->end(), DL, TII->get(RISCV::PB))
+        
+        outs() << (MBB.succ_size()) << "\n";
+        assert(MBB.getSingleSuccessor() == PB_MBB && "PlaceholderBranch expected to follow MBB.");
+
+        MIB = BuildMI(*PB_MBB, PB_MBB->front(), DL, TII->get(RISCV::PB))
                   .addReg(DestReg_BPR_S)
                   .addReg(DestReg_BPR_T)
                   .addReg(DestReg_BPR_C);
@@ -119,6 +127,8 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         // break;
       } else if (MI.isUnconditionalBranch()) {
         auto nI = std::next(I);
+        I = nI;
+        continue; // The following needs to be fixed.
         const auto &STI = MF.getSubtarget<RISCVSubtarget>();
         DebugLoc DL;
         const RISCVInstrInfo *TII = STI.getInstrInfo();
@@ -129,7 +139,11 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
         Register DestReg_BPR_C =
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
+
+        //Register DestReg =  MF.getRegInfo().createVirtualRegister(&RISCV::BPRRegClass);
+        //DestReg.asMCReg().
         MachineInstrBuilder MIB;
+
 
         MIB =
             BuildMI(
@@ -178,6 +192,7 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
     }
     // outs() << "Contents of MachineBasicBlock:\n";
     // outs() << MBB << "\n";
+    BB = nBB;
   }
 
   return true;
