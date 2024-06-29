@@ -790,8 +790,8 @@ def BMOVUC
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch=1, isTerminator=1, isBMOV=1  in {
 def PB
-			: RVInstR<0b1111111, 0b000, OPC_CUSTOM_3, (outs), (ins BPR_S:$rs2, BPR_T:$rd, BPR_C:$rs1),
-								"pb", "$rs2, $rd, $rs1">;               
+			: RVInstR<0b1111111, 0b000, OPC_CUSTOM_3, (outs), (ins BPR_T:$rd, BPR_S:$rs2, BPR_C:$rs1),
+								"pb", "$rd, $rs2, $rs1">;               
 }
 
 

@@ -572,6 +572,8 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
     Opcode = RISCV::PseudoVSPILL7_M1;
   else if (RISCV::VRN8M1RegClass.hasSubClassEq(RC))
     Opcode = RISCV::PseudoVSPILL8_M1;
+  else if (RISCV::BPRRegClass.hasSubClassEq(RC))
+    Opcode = RISCV::VS4R_V;
   else
     llvm_unreachable("Can't store this register to stack slot");
 

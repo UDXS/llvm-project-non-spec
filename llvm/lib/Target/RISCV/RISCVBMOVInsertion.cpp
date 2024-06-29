@@ -54,52 +54,58 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
         Register DestReg_BPR_C =
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
+        Register DestReg_BPR =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPRRegClass);
+
         DebugLoc DL;
         MachineInstrBuilder MIB;
         MachineInstrBuilder SourceMIB;
-        MIB =
-            BuildMI(
-                MBB, MI, DL,
-                TII->get(
-                    RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
-                .addReg(DestReg_BPR_T, RegState::Define)
-                .addMBB(MI.getOperand(2).getMBB());
-        MIB.getInstr()->setBMOVIndex(bmov_index);
 
-        SourceMIB = BuildMI(
+        // Unify BP Register
+        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::REG_SEQUENCE), DestReg_BPR)
+                  .addReg(DestReg_BPR_T)
+                  .addImm(RISCV::BPR_TRegClassID)
+                  .addReg(DestReg_BPR_S)
+                  .addImm(RISCV::BPR_SRegClassID)
+                  .addReg(DestReg_BPR_C)
+                  .addImm(RISCV::BPR_CRegClassID);
+
+        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVT_J))
+                  .addReg(DestReg_BPR_T, RegState::Define)
+                  .addMBB(MI.getOperand(2).getMBB());
+        MIB = BuildMI(
                   MBB, MI, DL,
                   TII->get(RISCV::BMOVS_J)) // This currently takes in the
                                             // target label, but it should take
                                             // the source label eventually.
                   .addReg(DestReg_BPR_S, RegState::Define);
-        MIB.getInstr()->setBMOVIndex(bmov_index);
+        SourceMIB = MIB;
 
         unsigned int BMOVOpcode = RISCV::BMOVC_BNE; // Default, can delete later
 
         switch (MI.getOpcode()) {
-          case RISCV::BNE:
-            BMOVOpcode = RISCV::BMOVC_BNE;
-            break;
-          case RISCV::BEQ:
-            BMOVOpcode = RISCV::BMOVC_BEQ;
-            break;
-          case RISCV::BLT:
-            BMOVOpcode = RISCV::BMOVC_BLT;
-            break;
-          case RISCV::BGE:
-            BMOVOpcode = RISCV::BMOVC_BGE;
-            break;
-          case RISCV::BLTU:
-            BMOVOpcode = RISCV::BMOVC_BLTU;
-            break;
-          case RISCV::BGEU:
-            BMOVOpcode = RISCV::BMOVC_BGEU;
-            break;
-          default:
-            outs() << "Unknown branch opcode!";
-            break;
+        case RISCV::BNE:
+          BMOVOpcode = RISCV::BMOVC_BNE;
+          break;
+        case RISCV::BEQ:
+          BMOVOpcode = RISCV::BMOVC_BEQ;
+          break;
+        case RISCV::BLT:
+          BMOVOpcode = RISCV::BMOVC_BLT;
+          break;
+        case RISCV::BGE:
+          BMOVOpcode = RISCV::BMOVC_BGE;
+          break;
+        case RISCV::BLTU:
+          BMOVOpcode = RISCV::BMOVC_BLTU;
+          break;
+        case RISCV::BGEU:
+          BMOVOpcode = RISCV::BMOVC_BGEU;
+          break;
+        default:
+          outs() << "Unknown branch opcode!";
+          break;
         }
-
 
         MIB = BuildMI(MBB, MI, DL, TII->get(BMOVOpcode))
                   .addReg(DestReg_BPR_C, RegState::Define)
@@ -107,17 +113,18 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
                   .addReg(MI.getOperand(1).getReg());
         MIB.getInstr()->setBMOVIndex(bmov_index);
 
+
         auto PB_MBB = MBB.splitAt(MI);
         PB_MBB->setLabelMustBeEmitted();
 
-        
         outs() << (MBB.succ_size()) << "\n";
-        assert(MBB.getSingleSuccessor() == PB_MBB && "PlaceholderBranch expected to follow MBB.");
+        assert(MBB.getSingleSuccessor() == PB_MBB &&
+               "PlaceholderBranch expected to follow MBB.");
 
         MIB = BuildMI(*PB_MBB, PB_MBB->front(), DL, TII->get(RISCV::PB))
-                  .addReg(DestReg_BPR_S)
-                  .addReg(DestReg_BPR_T)
-                  .addReg(DestReg_BPR_C);
+                  .addReg(DestReg_BPR)
+                  .addReg(RISCV::X0)
+                  .addReg(RISCV::X1);
         MIB.getInstr()->setBMOVIndex(bmov_index);
         SourceMIB.addMBB(PB_MBB);
 
@@ -125,6 +132,7 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         I = nI;
         bmov_index++;
         // break;
+
       } else if (MI.isUnconditionalBranch()) {
         auto nI = std::next(I);
         I = nI;
@@ -140,10 +148,10 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         Register DestReg_BPR_C =
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
 
-        //Register DestReg =  MF.getRegInfo().createVirtualRegister(&RISCV::BPRRegClass);
-        //DestReg.asMCReg().
+        // Register DestReg =
+        // MF.getRegInfo().createVirtualRegister(&RISCV::BPRRegClass);
+        // DestReg.asMCReg().
         MachineInstrBuilder MIB;
-
 
         MIB =
             BuildMI(
@@ -170,17 +178,17 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         switch (MI.getOpcode()) {
         case RISCV::JAL:
           MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
-                  .addReg(MI.getOperand(0).getReg())
-                  .addReg(DestReg_BPR_S)
-                  .addReg(DestReg_BPR_C)
-                  .addReg(DestReg_BPR_T);
+                    .addReg(MI.getOperand(0).getReg())
+                    .addReg(DestReg_BPR_S)
+                    .addReg(DestReg_BPR_C)
+                    .addReg(DestReg_BPR_T);
           break;
         case RISCV::JALR:
-                  MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
-                  .addReg(MI.getOperand(0).getReg())
-                  .addReg(DestReg_BPR_S)
-                  .addReg(DestReg_BPR_C)
-                  .addReg(DestReg_BPR_T);
+          MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
+                    .addReg(MI.getOperand(0).getReg())
+                    .addReg(DestReg_BPR_S)
+                    .addReg(DestReg_BPR_C)
+                    .addReg(DestReg_BPR_T);
           break;
         default:
           outs() << "Unknown branch opcode!";
