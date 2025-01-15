@@ -574,8 +574,13 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
     Opcode = RISCV::PseudoVSPILL8_M1;
   else if (RISCV::BPRRegClass.hasSubClassEq(RC))
     Opcode = RISCV::VS4R_V;
-  else
+  else {
+    outs() <<  "\nUnreachable:" << (RC->getID()) << "\n";
+    MBB.dump();
+    Opcode = RISCV::SD;
+    return;
     llvm_unreachable("Can't store this register to stack slot");
+  }
 
   if (IsScalableVector) {
     MachineMemOperand *MMO = MF->getMachineMemOperand(
@@ -957,14 +962,14 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   // eliminated
   //***********************************************************************************************************************************************************
 
-  if (NumTerminators == 1 && I->getDesc().getOpcode() == RISCV::PB) {
+  if (NumTerminators == 1 && I->getDesc().getOpcode() == RISCV::PBAL) {
     parseBMOV(MBB, TBB, Cond);
     // FBB = getBranchDestBlock(*I);
     return false;
   }
 
   if ((NumTerminators == 2 &&
-       std::prev(I)->getDesc().getOpcode() == RISCV::PB &&
+       std::prev(I)->getDesc().getOpcode() == RISCV::PBAL &&
        I->getDesc().isUnconditionalBranch())) {
     parseBMOV(MBB, TBB, Cond);
     FBB = getBranchDestBlock(*I);
@@ -1003,7 +1008,7 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 void removeBMOV(MachineBasicBlock &MBB, int index) {
   for (auto I = MBB.begin(); I != MBB.end();) {
     auto &Instr = *I;
-    if ((Instr.getDesc().getOpcode() == RISCV::PB ||
+    if ((Instr.getDesc().getOpcode() == RISCV::PBAL ||
          Instr.getDesc().getOpcode() == RISCV::BMOVT_J ||
          Instr.getDesc().getOpcode() == RISCV::BMOVS_J ||
          Instr.getDesc().getOpcode() == RISCV::BMOVC_BNE ||
@@ -1040,13 +1045,13 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   I->eraseFromParent();*/
 
   if (BytesRemoved) {
-    if (I->getDesc().getOpcode() == RISCV::PB)
+    if (I->getDesc().getOpcode() == RISCV::PBAL)
       *BytesRemoved += 32;
     else
       *BytesRemoved += getInstSizeInBytes(*I);
   }
 
-  if (I->getDesc().getOpcode() == RISCV::PB) {
+  if (I->getDesc().getOpcode() == RISCV::PBAL) {
     int index = I->getBMOVIndex();
     bmov_index_vector.push_back(index);
     removeBMOV(MBB, index);
@@ -1059,7 +1064,7 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
     return 1;
   --I;
   if (!I->getDesc()
-           .isConditionalBranch()) // || I->getDesc().getOpcode() == RISCV::PB)
+           .isConditionalBranch()) // || I->getDesc().getOpcode() == RISCV::PBAL)
     return 1;
 
   // Remove the branch.
@@ -1068,13 +1073,13 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   I->eraseFromParent();*/
 
   if (BytesRemoved) {
-    if (I->getDesc().getOpcode() == RISCV::PB)
+    if (I->getDesc().getOpcode() == RISCV::PBAL)
       *BytesRemoved += 32;
     else
       *BytesRemoved += getInstSizeInBytes(*I);
   }
 
-  if (I->getDesc().getOpcode() == RISCV::PB) {
+  if (I->getDesc().getOpcode() == RISCV::PBAL) {
     int index = I->getBMOVIndex();
     bmov_index_vector.push_back(index);
     removeBMOV(MBB, index);
@@ -1137,7 +1142,7 @@ void insertBMOV(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
       .addReg(Cond[1].getReg())
       .addReg(Cond[2].getReg());
 
-  BuildMI(&MBB, DL, TII->get(RISCV::PB))
+  BuildMI(&MBB, DL, TII->get(RISCV::PBAL))
       //.addReg(DestReg_BPR_T, RegState::Define)
       .addReg(Register(RISCV::BC0 + index))
       .addReg(Register(RISCV::BS0 + index))

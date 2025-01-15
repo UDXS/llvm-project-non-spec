@@ -789,10 +789,12 @@ def BMOVUC
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch=1, isTerminator=1, isBMOV=1  in {
-def PB
-			: RVInstR<0b1111111, 0b000, OPC_CUSTOM_3, (outs), (ins BPR_T:$rd, BPR_S:$rs2, BPR_C:$rs1),
-								"pb", "$rd, $rs2, $rs1">;               
+def PBAL
+			: RVInstR<0b1111111, 0b000, OPC_CUSTOM_3, (outs GPR:$rd), (ins BPR:$rs1, GPR:$rs2),
+								"pbal", "$rd, $rs1, $rs2">;               
 }
+
+def : InstAlias<"pb $rd",   (PBAL X0, BPR:$rd, X0)>;
 
 
 //******************************************************************************************************************************

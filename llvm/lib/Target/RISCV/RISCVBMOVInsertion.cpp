@@ -43,7 +43,7 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
     auto &MBB = *BB;
     for (auto I = MBB.rbegin(); I != MBB.rend();) {
       auto &MI = *I;
-      //      outs() << MI;
+      outs() << MI << "\n Branch Info: " <<  MI.isConditionalBranch() << MI.isUnconditionalBranch() << MI.isCall() << "\n";
       if (MI.isConditionalBranch()) { // Is the instruction a bne/beq/blt
         auto nI = std::next(I);
         const auto &STI = MF.getSubtarget<RISCVSubtarget>();
@@ -73,15 +73,11 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVT_J))
                   .addReg(DestReg_BPR_T, RegState::Define)
                   .addMBB(MI.getOperand(2).getMBB());
-        MIB = BuildMI(
-                  MBB, MI, DL,
-                  TII->get(RISCV::BMOVS_J)) // This currently takes in the
-                                            // target label, but it should take
-                                            // the source label eventually.
+        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVS_J))
                   .addReg(DestReg_BPR_S, RegState::Define);
         SourceMIB = MIB;
 
-        unsigned int BMOVOpcode = RISCV::BMOVC_BNE; // Default, can delete later
+        unsigned int BMOVOpcode = RISCV::BMOVC_BNE;
 
         switch (MI.getOpcode()) {
         case RISCV::BNE:
@@ -113,7 +109,6 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
                   .addReg(MI.getOperand(1).getReg());
         MIB.getInstr()->setBMOVIndex(bmov_index);
 
-
         auto PB_MBB = MBB.splitAt(MI);
         PB_MBB->setLabelMustBeEmitted();
 
@@ -121,11 +116,10 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         assert(MBB.getSingleSuccessor() == PB_MBB &&
                "PlaceholderBranch expected to follow MBB.");
 
-        MIB = BuildMI(*PB_MBB, PB_MBB->front(), DL, TII->get(RISCV::PB))
-                  .addReg(DestReg_BPR)
+        MIB = BuildMI(*PB_MBB, PB_MBB->front(), DL, TII->get(RISCV::PBAL))
                   .addReg(RISCV::X0)
-                  .addReg(RISCV::X1);
-        MIB.getInstr()->setBMOVIndex(bmov_index);
+                  .addReg(DestReg_BPR)
+                  .addReg(RISCV::X0);
         SourceMIB.addMBB(PB_MBB);
 
         MI.eraseFromBundle();
@@ -134,66 +128,74 @@ bool RISCVBMOVInsertion::runOnMachineFunction(MachineFunction &MF) {
         // break;
 
       } else if (MI.isUnconditionalBranch()) {
+        
         auto nI = std::next(I);
-        I = nI;
-        continue; // The following needs to be fixed.
         const auto &STI = MF.getSubtarget<RISCVSubtarget>();
-        DebugLoc DL;
         const RISCVInstrInfo *TII = STI.getInstrInfo();
-
         Register DestReg_BPR_T =
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_TRegClass);
         Register DestReg_BPR_S =
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_SRegClass);
         Register DestReg_BPR_C =
             MF.getRegInfo().createVirtualRegister(&RISCV::BPR_CRegClass);
+        Register DestReg_BPR =
+            MF.getRegInfo().createVirtualRegister(&RISCV::BPRRegClass);
 
-        // Register DestReg =
-        // MF.getRegInfo().createVirtualRegister(&RISCV::BPRRegClass);
-        // DestReg.asMCReg().
+        DebugLoc DL;
         MachineInstrBuilder MIB;
+        MachineInstrBuilder SourceMIB;
 
-        MIB =
-            BuildMI(
-                MBB, MI, DL,
-                TII->get(
-                    RISCV::BMOVT_J)) // bne s1, s0, LBB0_4 to bmovt bt0, LBB0_4
-                .addReg(DestReg_BPR_T, RegState::Define)
-                .addMBB(MI.getOperand(2).getMBB());
-        MIB.getInstr()->setBMOVIndex(bmov_index);
+        // Unify BP Register
+        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::REG_SEQUENCE), DestReg_BPR)
+                  .addReg(DestReg_BPR_T)
+                  .addImm(RISCV::BPR_TRegClassID)
+                  .addReg(DestReg_BPR_S)
+                  .addImm(RISCV::BPR_SRegClassID)
+                  .addReg(DestReg_BPR_C)
+                  .addImm(RISCV::BPR_CRegClassID);
 
-        MIB = BuildMI(
-                  MBB, MI, DL,
-                  TII->get(RISCV::BMOVS_J)) // This currently takes in the
-                                            // target label, but it should take
-                                            // the source label eventually.
-                  .addReg(DestReg_BPR_S, RegState::Define)
-                  .addMBB(MI.getParent());
-        MIB.getInstr()->setBMOVIndex(bmov_index);
-
-        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVUC))
-                  .addReg(DestReg_BPR_C, RegState::Define);
-        MIB.getInstr()->setBMOVIndex(bmov_index);
+        // We don't emit a BMOVC here but its vital that BMOV Target is set
+        // after Source to enter the unconditional mode.
+        MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVS_J))
+                  .addReg(DestReg_BPR_S, RegState::Define);
+        SourceMIB = MIB;
 
         switch (MI.getOpcode()) {
+        // We must fixup JAL into a single
         case RISCV::JAL:
-          MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
-                    .addReg(MI.getOperand(0).getReg())
-                    .addReg(DestReg_BPR_S)
-                    .addReg(DestReg_BPR_C)
-                    .addReg(DestReg_BPR_T);
+          MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVT_J))
+                    .addReg(DestReg_BPR_T, RegState::Define)
+                    .addMBB(MI.getOperand(1).getMBB());
           break;
         case RISCV::JALR:
-          MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::PB))
-                    .addReg(MI.getOperand(0).getReg())
-                    .addReg(DestReg_BPR_S)
-                    .addReg(DestReg_BPR_C)
-                    .addReg(DestReg_BPR_T);
+          MIB = BuildMI(MBB, MI, DL, TII->get(RISCV::BMOVT_I))
+                    .addReg(DestReg_BPR_T, RegState::Define)
+                    .addReg(MI.getOperand(1).getReg())
+                    .addImm(MI.getOperand(2).getImm());
           break;
         default:
           outs() << "Unknown branch opcode!";
           break;
         }
+
+        auto PB_MBB = MBB.splitAt(MI);
+        PB_MBB->setLabelMustBeEmitted();
+
+        outs() << (MBB.succ_size()) << "\n";
+        assert(MBB.getSingleSuccessor() == PB_MBB &&
+               "PlaceholderBranch expected to follow MBB.");
+
+        MIB = BuildMI(*PB_MBB, PB_MBB->front(), DL, TII->get(RISCV::PBAL))
+                  .addReg(MI.getOperand(0).getReg())
+                  .addReg(DestReg_BPR)
+                  .addReg(RISCV::X0);
+        MIB.getInstr()->setBMOVIndex(bmov_index);
+        SourceMIB.addMBB(PB_MBB);
+
+        MI.eraseFromBundle();
+        I = nI;
+        bmov_index++;
+        // break;
       } else {
         I = std::next(I);
       }

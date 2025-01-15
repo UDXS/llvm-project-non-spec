@@ -372,6 +372,8 @@ void RISCVPassConfig::addPreSched2() {
   // Emit KCFI checks for indirect calls.
   //addPass(createRISCVMachineInstrPrinterPass());
   addPass(createKCFIPass());
+  addPass(createRISCVBMOVInsertionPass()); // Inserting the BMOV pass pre reg-alloc to utilize the machine instruction scheduler and post regalloc scheduler
+
 }
 
 void RISCVPassConfig::addPreEmitPass() {
@@ -420,8 +422,8 @@ void RISCVPassConfig::addMachineSSAOptimization() {
 }
 
 void RISCVPassConfig::addPreRegAlloc() {
-  addPass(createRISCVBMOVInsertionPass()); // Inserting the BMOV pass pre reg-alloc to utilize the machine instruction scheduler and post regalloc scheduler
   addPass(createRISCVPreRAExpandPseudoPass());
+  addPass(createRISCVBMOVInsertionPass()); // Inserting the BMOV pass pre reg-alloc to utilize the machine instruction scheduler and post regalloc scheduler
   if (TM->getOptLevel() != CodeGenOptLevel::None)
     addPass(createRISCVMergeBaseOffsetOptPass());
   addPass(createRISCVInsertVSETVLIPass());
@@ -445,6 +447,7 @@ void RISCVPassConfig::addFastRegAlloc() {
 
 
 void RISCVPassConfig::addPostRegAlloc() {
+  addPass(createRISCVBMOVInsertionPass()); // Inserting the BMOV pass pre reg-alloc to utilize the machine instruction scheduler and post regalloc scheduler
   if (TM->getOptLevel() != CodeGenOptLevel::None &&
       EnableRedundantCopyElimination)
     addPass(createRISCVRedundantCopyEliminationPass());

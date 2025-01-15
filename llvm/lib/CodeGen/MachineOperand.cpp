@@ -139,6 +139,10 @@ bool MachineOperand::isRenamable() const {
 }
 
 void MachineOperand::setIsRenamable(bool Val) {
+  if(!getReg().isPhysical()) {
+    outs() << "renamable attempt made on non-physical";
+    getParent()->getParent()->dump();
+  }
   assert(isReg() && "Wrong MachineOperand accessor");
   assert(getReg().isPhysical() &&
          "setIsRenamable should only be called on physical registers");
