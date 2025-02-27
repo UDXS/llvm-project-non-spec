@@ -564,7 +564,7 @@ class BranchCC_rri<bits<3> funct3, string opcodestr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
 class BMOVC_rri<bits<3> funct3, string opcodestr>
-    : RVInstR<0b1010111, funct3, OPC_OP_V, (outs BPR_C:$rd),
+    : RVInstR<0b0000000, funct3, OPC_OP_V, (outs BPR_C:$rd),
             (ins GPR:$rs1, GPR:$rs2), opcodestr, "$rd, $rs1, $rs2">;
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in {
@@ -753,44 +753,30 @@ let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
 def BMOVT_J
 			: RVInstJ<OPC_CUSTOM_1, (outs BPR_T:$rd), (ins simm21_lsb0_jal:$imm20),
 								"bmovt", "$rd, $imm20">, Sched<[WriteBMOV]>;
-}
-
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVT_I
 			: RVInstI<0b001, OPC_CUSTOM_2, (outs BPR_C:$rd), (ins GPR:$rs1, simm13_lsb0:$imm12),
 								"bmovt", "$rd, $rs1, $imm12">;
-}
 
-let hasSideEffects = 0 , mayLoad = 0, mayStore = 0 in {
 def BMOVS_J
 			: RVInstJ<OPC_CUSTOM_0, (outs BPR_S:$rd), (ins simm21_lsb0_jal:$imm20),
 								"bmovs", "$rd, $imm20">, Sched<[WriteBMOV]>;
-}
 
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
 def BMOVS_I
 			: RVInstI<0b000, OPC_CUSTOM_2, (outs BPR_C:$rd), (ins GPR:$rs1, simm13_lsb0:$imm12),
 								"bmovs", "$rd, $rs1, $imm12">;
-}
 
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
     def BMOVC_BEQ : BMOVC_rri<0b000, "bmovc_beq">;
     def BMOVC_BNE : BMOVC_rri<0b001, "bmovc_bne">;
     def BMOVC_BLT : BMOVC_rri<0b100, "bmovc_blt">;
     def BMOVC_BGE : BMOVC_rri<0b101, "bmovc_bge">;
     def BMOVC_BLTU : BMOVC_rri<0b110, "bmovc_bltu">;
     def BMOVC_BGEU : BMOVC_rri<0b111, "bmovc_bgeu">;
-}
 
-let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
-def BMOVUC
-			: RVInstR<0b1111100, 0b000, OPC_OP_V, (outs BPR_C:$rd), (ins GPR:$rc1, GPR:$rs1, GPR:$rs2),
-								"bmovc", "$rd">;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch=1, isTerminator=1, isBMOV=1  in {
 def PBAL
-			: RVInstR<0b1111111, 0b000, OPC_CUSTOM_3, (outs GPR:$rd), (ins BPR:$rs1, GPR:$rs2),
+			: RVInstR<0b0000000, 0b000, OPC_CUSTOM_3, (outs GPR:$rd), (ins BPR:$rs1, GPR:$rs2),
 								"pbal", "$rd, $rs1, $rs2">;               
 }
 
