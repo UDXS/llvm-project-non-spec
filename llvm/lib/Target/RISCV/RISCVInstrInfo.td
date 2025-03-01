@@ -273,6 +273,13 @@ def uimm8 : Operand<XLenVT> {
   let OperandNamespace = "RISCVOp";
 }
 
+def uimm12 : Operand<XLenVT> {
+  let ParserMatchClass = UImmAsmOperand<12>;
+  let DecoderMethod = "decodeUImmOperand<12>";
+  let OperandType = "OPERAND_UIMM12";
+  let OperandNamespace = "RISCVOp";
+}
+
 def simm12 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isInt<12>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<12>;
   let EncoderMethod = "getImmOpValue";
@@ -765,12 +772,20 @@ def BMOVS_I
 			: RVInstI<0b000, OPC_CUSTOM_2, (outs BPR_C:$rd), (ins GPR:$rs1, simm13_lsb0:$imm12),
 								"bmovs", "$rd, $rs1, $imm12">;
 
-    def BMOVC_BEQ : BMOVC_rri<0b000, "bmovc_beq">;
-    def BMOVC_BNE : BMOVC_rri<0b001, "bmovc_bne">;
-    def BMOVC_BLT : BMOVC_rri<0b100, "bmovc_blt">;
-    def BMOVC_BGE : BMOVC_rri<0b101, "bmovc_bge">;
-    def BMOVC_BLTU : BMOVC_rri<0b110, "bmovc_bltu">;
-    def BMOVC_BGEU : BMOVC_rri<0b111, "bmovc_bgeu">;
+def BMOVC_BEQ : BMOVC_rri<0b000, "bmovc_beq">;
+def BMOVC_BNE : BMOVC_rri<0b001, "bmovc_bne">;
+def BMOVC_BLT : BMOVC_rri<0b100, "bmovc_blt">;
+def BMOVC_BGE : BMOVC_rri<0b101, "bmovc_bge">;
+def BMOVC_BLTU : BMOVC_rri<0b110, "bmovc_bltu">;
+def BMOVC_BGEU : BMOVC_rri<0b111, "bmovc_bgeu">;
+
+def BMOVC_LOOP
+             : RVInstI<0b100, OPC_OP_P, (outs BPR_C:$rd), (ins GPR:$rs1, uimm12:$imm12),
+                                "bmovc_loop", "$rd, ${imm12}(${rs1})">;
+
+def BMOVC_BITS
+             : RVInstI<0b010, OPC_OP_P, (outs BPR_C:$rd), (ins GPR:$rs1, uimm12:$imm12),
+                                "bmovc_bits", "$rd, $rs1, $imm12">;
 
 }
 
@@ -781,6 +796,8 @@ def PBAL
 }
 
 def : InstAlias<"pb $rd",   (PBAL X0, BPR:$rd, X0)>;
+def : InstAlias<"bmovc_loop $rd, $imm12", (BMOVC_LOOP BPR_C:$rd, X0, uimm12:$imm12)>;
+def : InstAlias<"bmovc_loop $rd, $rs", (BMOVC_LOOP BPR_C:$rd, GPR:$rs, 0)>;
 
 
 //******************************************************************************************************************************
